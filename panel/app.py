@@ -67,7 +67,7 @@ def home():
     <h3>📘 AutoCAD referral: {total_autocad}</h3>
 
     <h3>🎨 Photoshop referral: {total_photoshop}</h3>
-    """
+    
     <hr>
 
 <h2>📢 Broadcast</h2>
@@ -88,6 +88,7 @@ Yuborish
 </form>
 
 <p>{result}</p>
+"""
 import os
 def run_bot():
 
