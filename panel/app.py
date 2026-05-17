@@ -40,7 +40,7 @@ def home():
 
             try:
 
-                bot.send_message(user_id, text)
+                bot.send_message(int(user_id), text)
 
                 sent += 1
 
