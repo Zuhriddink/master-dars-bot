@@ -1,3 +1,5 @@
+import threading
+import os
 from flask import Flask
 import json
 
@@ -42,6 +44,11 @@ def home():
     """
 
 import os
+def run_bot():
+
+    os.system("python bot.py")
+
+threading.Thread(target=run_bot).start()
 
 app.run(
     host="0.0.0.0",
