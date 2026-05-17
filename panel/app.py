@@ -28,6 +28,7 @@ def home():
     users = load_users()
 
     result = ""
+    sent = 0
 
     if request.method == "POST":
 
