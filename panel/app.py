@@ -25,20 +25,29 @@ def load_users():
 @app.route("/", methods=["GET", "POST"])
 def home():
 
+    if not session.get("admin"):
+
+        return redirect("/login")
+
     users = load_users()
+
+    result = ""
+
+    sent = 0
+
     top_users = []
 
-for user_id, data in users.items():
+    for user_id, data in users.items():
 
-    total = data.get("autocad", 0) + data.get("photoshop", 0)
+        total = data.get("autocad", 0) + data.get("photoshop", 0)
 
-    top_users.append((user_id, total))
+        top_users.append((user_id, total))
 
-top_users = sorted(
-    top_users,
-    key=lambda x: x[1],
-    reverse=True
-)
+    top_users = sorted(
+        top_users,
+        key=lambda x: x[1],
+        reverse=True
+    )
 
     result = ""
     sent = 0
