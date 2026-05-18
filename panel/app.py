@@ -95,7 +95,11 @@ def run_bot():
 
     os.system("python bot.py")
 
-threading.Thread(target=run_bot).start()
+bot_thread = threading.Thread(target=run_bot)
+
+bot_thread.daemon = True
+
+bot_thread.start()
 
 app.run(
     host="0.0.0.0",
