@@ -1,4 +1,3 @@
-ghp_XrxpHveSo5CWN6j6H2mtCzRLUxnf1C1NkfTfrom flask import Flask, request, session, redirect
 import telebot
 import threading
 import os
