@@ -77,6 +77,19 @@ def home():
 
     users = load_users()
 
+    top_users = []
+
+    for user_id, data in users.items():
+
+        total = data.get("autocad", 0) + data.get("photoshop", 0)
+
+        top_users.append((user_id, total))
+
+    top_users = sorted(
+        top_users,
+        key=lambda x: x[1],
+        reverse=True
+    )
     total_users = len(users)
 
     total_autocad = sum(
