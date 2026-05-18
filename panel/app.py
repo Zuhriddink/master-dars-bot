@@ -26,6 +26,19 @@ def load_users():
 def home():
 
     users = load_users()
+    top_users = []
+
+for user_id, data in users.items():
+
+    total = data.get("autocad", 0) + data.get("photoshop", 0)
+
+    top_users.append((user_id, total))
+
+top_users = sorted(
+    top_users,
+    key=lambda x: x[1],
+    reverse=True
+)
 
     result = ""
     sent = 0
@@ -61,6 +74,20 @@ def home():
         total_photoshop += user["photoshop"]
 
     return f"""
+    <hr>
+
+<h2>🏆 TOP Referral</h2>
+
+<ol>
+
+{
+''.join(
+    f"<li>{user_id} — {total} ta referral</li>"
+    for user_id, total in top_users[:10]
+)
+}
+
+</ol>
     <h1>🔥 MASTER DARS ADMIN PANEL</h1>
 
     <h2>👥 Userlar: {total_users}</h2>
