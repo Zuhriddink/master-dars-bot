@@ -108,7 +108,6 @@ def home():
 {
 ''.join(
 
-f"""
 
 <tr>
 
