@@ -110,20 +110,20 @@ def home():
 
         result = f"✅ {sent} ta userga yuborildi"
 
-top_html = ""
+    top_html = ""
 
-for user_id, total in top_users[:10]:
+    for user_id, total in top_users[:10]:
 
-    top_html += f"<li>{user_id} — {total} ta referral</li>"
+        top_html += f"<li>{user_id} — {total} ta referral</li>"
 
 
-users_html = ""
+    users_html = ""
 
-for user_id, data in users.items():
+    for user_id, data in users.items():
 
-    total = data.get("autocad", 0) + data.get("photoshop", 0)
+        total = data.get("autocad", 0) + data.get("photoshop", 0)
 
-    users_html += f"""
+        users_html += f"""
 
     <tr>
 
