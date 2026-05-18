@@ -78,6 +78,50 @@ top_users = sorted(
 
 <h2>🏆 TOP Referral</h2>
 
+<hr>
+
+<h2>👥 User List</h2>
+
+<table border="1" cellpadding="10">
+
+<tr>
+
+<th>User ID</th>
+
+<th>AutoCAD</th>
+
+<th>Photoshop</th>
+
+<th>Total</th>
+
+</tr>
+
+{
+''.join(
+
+f"""
+
+<tr>
+
+<td>{user_id}</td>
+
+<td>{data.get('autocad', 0)}</td>
+
+<td>{data.get('photoshop', 0)}</td>
+
+<td>{data.get('autocad', 0) + data.get('photoshop', 0)}</td>
+
+</tr>
+
+"""
+
+for user_id, data in users.items()
+
+)
+}
+
+</table>
+
 <ol>
 
 {
