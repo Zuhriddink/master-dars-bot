@@ -23,7 +23,7 @@ def load_users():
 
 def run_bot():
 
-    os.system("python ../bot.py")
+    os.system("python bot.py")
 
 
 bot_thread = threading.Thread(target=run_bot)
