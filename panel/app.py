@@ -22,7 +22,7 @@ def load_users():
 
 def run_bot():
 
-    bot.infinity_polling(skip_pending=True)
+    bot.infinity_polling()
 
 
 @app.route("/login", methods=["GET", "POST"])
