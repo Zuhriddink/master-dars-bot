@@ -2,9 +2,6 @@ import telebot
 import threading
 import os
 import json
-def run_bot():
-
-    os.system("python /opt/render/project/src/bot.py")
 from flask import Flask, request, session, redirect
 
 TOKEN = "8961895801:AAHWY3fv-DMcW-D1-THQtIliVeKSycWCTZg"
@@ -21,6 +18,8 @@ def load_users():
     with open("users.json", "r") as file:
 
         return json.load(file)
+
+
 def run_bot():
 
     bot.infinity_polling(skip_pending=True)
