@@ -21,16 +21,6 @@ def load_users():
         return json.load(file)
 
 
-def run_bot():
-
-
-
-bot_thread = threading.Thread(target=run_bot)
-
-bot_thread.daemon = True
-
-bot_thread.start()
-
 
 @app.route("/login", methods=["GET", "POST"])
 
