@@ -3,10 +3,7 @@ import threading
 import os
 import json
 from flask import Flask, request, session, redirect
-
-TOKEN = "8961895801:AAHWY3fv-DMcW-D1-THQtIliVeKSycWCTZg"
-
-bot = telebot.TeleBot(TOKEN)
+from bot import bot
 
 app = Flask(__name__)
 
