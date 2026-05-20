@@ -2,6 +2,10 @@ import telebot
 import threading
 import os
 import json
+import sys
+
+sys.path.append("..")
+
 from bot import bot
 from flask import Flask, request, session, redirect
 
