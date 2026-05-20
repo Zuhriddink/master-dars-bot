@@ -2,7 +2,7 @@ import telebot
 import threading
 import os
 import json
-
+from bot import bot
 from flask import Flask, request, session, redirect
 
 TOKEN = "8961895801:AAHWY3fv-DMcW-D1-THQtIliVeKSycWCTZg"
@@ -23,7 +23,6 @@ def load_users():
 
 def run_bot():
 
-    os.system("python bot.py")
 
 
 bot_thread = threading.Thread(target=run_bot)
@@ -215,9 +214,16 @@ def home():
 
     """
 
+def run_bot():
 
-app.run(
-    host="0.0.0.0",
-    port=int(os.environ.get("PORT", 5000))
-)
+    bot.infinity_polling(skip_pending=True)
 
+
+if __name__ == "__main__":
+
+    threading.Thread(target=run_bot).start()
+
+    app.run(
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT", 5000))
+    )
