@@ -399,8 +399,4 @@ atigi 59 000 so‘m
             except:
                 pass
 
-    try:
-        bot.infinity_polling(timeout=10, long_polling_timeout=5)
-
-    except Exception as e:
-        print(e)
+  
