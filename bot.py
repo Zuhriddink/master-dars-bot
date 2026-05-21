@@ -375,12 +375,12 @@ atigi 59 000 so‘m
 
                 btn1 = types.InlineKeyboardButton(
                     "💳 To‘lov qilish",
-                    url="https://t.me/MasterdarsAdmin"
+                    url="https://t.me/Master_darsbot"
                 )
 
                 btn2 = types.InlineKeyboardButton(
                     "👨‍💻 Admin bilan bog‘lanish",
-                    url="https://t.me/MasterdarsAdmin"
+                    url="https://t.me/Master_darsbot"
                 )
 
                 markup.add(btn1)
