@@ -1,4 +1,3 @@
-import telebot
 import threading
 import os
 import json
@@ -8,7 +7,6 @@ from flask import Flask, request, session, redirect
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from bot import bot
 
 app = Flask(__name__)
 
