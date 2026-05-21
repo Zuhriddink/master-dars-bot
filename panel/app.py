@@ -22,11 +22,6 @@ def load_users():
         return json.load(file)
 
 
-def run_bot():
-
-    bot.infinity_polling()
-
-
 @app.route("/login", methods=["GET", "POST"])
 
 def login():
