@@ -2,9 +2,12 @@ import threading
 import os
 import json
 import sys
-
 from flask import Flask, request, session, redirect
+import telebot
 
+TOKEN = "8961895801:AAGBJhkydB3ZtnkMjFQwJ7rak60mXeEUPg4"
+
+bot = telebot.TeleBot(TOKEN)
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
