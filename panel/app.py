@@ -66,6 +66,9 @@ def home():
 
     users = load_users()
 
+    print("USERS:", users)
+    print("COUNT:", len(users))
+
     top_users = []
 
     for user_id, data in users.items():
