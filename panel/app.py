@@ -15,7 +15,7 @@ app.secret_key = "masterdarssecret"
 
 def load_users():
 
-    with open("users.json", "r") as file:
+    with open("../users.json", "r") as file:
 
         return json.load(file)
 

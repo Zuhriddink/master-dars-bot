@@ -4,7 +4,7 @@ import json
 import os
 import time
 
-TOKEN = "8961895801:AAHWY3fv-DMcW-D1-THQtIliVeKSycWCTZg"
+TOKEN = "8961895801:AAGBJhkydB3ZtnkMjFQwJ7rak60mXeEUPg4"
 ADMIN_ID = 1420365532
 
 
@@ -34,12 +34,15 @@ def start(message):
     user_id = str(message.from_user.id)
 
     if user_id not in users:
+
         users[user_id] = {
-    "autocad": 0,
-    "photoshop": 0,
-    "time": time.time(),
-    "offer_sent": False
-}
+            "autocad": 0,
+            "photoshop": 0,
+            "time": time.time(),
+            "offer_sent": False
+    }
+
+    save_users(users)
 
     # referral tekshirish
     args = message.text.split()
@@ -67,23 +70,11 @@ def start(message):
                 if referrer_id in users:
 
                     users[referrer_id]["photoshop"] += 1
-    total = (
-        users[referrer_id]["autocad"] +
-        users[referrer_id]["photoshop"]
-    )
+    if 'referrer_id' in locals():
 
-    if total == 25:
-
-        bot.send_message(
-            referrer_id,
-            "🎉 Tabriklaymiz!\n\nSiz 25 ta referral yig‘dingiz va 4 ta bonus kursni qo‘lga kiritdingiz 🔥\n\n🎁 Bonusni olish uchun adminga murojaat qiling\n@Masterdarsadmin"
-        )
-
-    if total == 50:
-
-        bot.send_message(
-            referrer_id,
-            "🏆 Tabriklaymiz!\n\nSiz 50 ta referral yig‘dingiz va 10 ta bonus kursni qo‘lga kiritdingiz 🚀\n\n🎁 Bonusni olish uchun adminga murojaat qiling:\n@Masterdarsadmin"
+        total = (
+            users[referrer_id]["autocad"] +
+            users[referrer_id]["photoshop"]
         )
 
     save_users(users)
@@ -327,76 +318,7 @@ def stats(message):
 
     bot.send_message(message.chat.id, text)
 
+
 print("Bot ishga tushdi...")
 
-while True:
-
-    users = load_users()
-
-    for user_id in users:
-
-        user = users[user_id]
-
-        autocad = user["autocad"]
-        photoshop = user["photoshop"]
-
-        total = autocad + photoshop
-
-        passed = time.time() - user["time"]
-
-        if (
-            total > 0
-            and (autocad < 10 or photoshop < 10)
-            and passed > 259200
-            and user["offer_sent"] == False
-        ):
-
-            text = """
-Assalomu alaykum 😊
-
-Siz kursni olish uchun harakat qilib ko‘rdingiz, lekin hali barcha kurslarni ocholmadingiz.
-
-Bugun siz uchun maxsus imkoniyat 🔥
-
-📚 Istalgan kurs
-atigi 59 000 so‘m
-
-✅ Videodarslar
-✅ Amaliy loyihalar
-✅ Private kanal
-✅ Bepul ustoz yordami
-
-📩 To‘lov uchun admin bilan bog‘laning.
-"""
-
-            try:
-
-                markup = types.InlineKeyboardMarkup()
-
-                btn1 = types.InlineKeyboardButton(
-                    "💳 To‘lov qilish",
-                    url="https://t.me/Master_darsbot"
-                )
-
-                btn2 = types.InlineKeyboardButton(
-                    "👨‍💻 Admin bilan bog‘lanish",
-                    url="https://t.me/Master_darsbot"
-                )
-
-                markup.add(btn1)
-                markup.add(btn2)
-
-                bot.send_message(
-                    user_id,
-                    text,
-                    reply_markup=markup
-                )
-
-                users[user_id]["offer_sent"] = True
-
-                save_users(users)
-
-            except:
-                pass
-
-  
+bot.infinity_polling(timeout=10, long_polling_timeout=5)
