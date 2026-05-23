@@ -13,9 +13,11 @@ app = Flask(__name__)
 app.secret_key = "masterdarssecret"
 
 
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 def load_users():
 
-    with open("../users.json", "r") as file:
+    with open(os.path.join(BASE_DIR, "users.json"), "r") as file:
 
         return json.load(file)
 
