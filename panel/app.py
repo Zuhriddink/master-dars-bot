@@ -196,17 +196,85 @@ def home():
 
     """
     return f"""
+    <html>
+
+    <head>
+
+    <title>MASTER DARS ADMIN</title>
+
+    <style>
+
+    body {{
+        background:#111827;
+        color:white;
+        font-family:Arial;
+        padding:20px;
+    }}
+
+    .card {{
+        background:#1f2937;
+        padding:20px;
+        border-radius:15px;
+        margin-bottom:20px;
+    }}
+
+    h1,h2,h3 {{
+        margin:10px 0;
+    }}
+
+    textarea,input[type=file] {{
+        width:100%;
+        padding:12px;
+        border-radius:10px;
+        border:none;
+        margin-top:10px;
+    }}
+
+    button {{
+        background:#10b981;
+        color:white;
+        border:none;
+        padding:12px 20px;
+        border-radius:10px;
+        font-size:16px;
+        cursor:pointer;
+    }}
+
+    table {{
+        width:100%;
+        border-collapse:collapse;
+        background:#1f2937;
+        border-radius:10px;
+        overflow:hidden;
+    }}
+
+    th {{
+        background:#10b981;
+        color:white;
+        padding:12px;
+    }}
+
+    td {{
+        padding:10px;
+        border-bottom:1px solid #374151;
+        text-align:center;
+    }}
+
+    </style>
+
+    </head>
+
+    <body>
 
     <h1>🔥 MASTER DARS ADMIN PANEL</h1>
 
+    <div class="card">
     <h2>👥 Userlar: {total_users}</h2>
+    <h3>📘 AutoCAD: {total_autocad}</h3>
+    <h3>🎨 Photoshop: {total_photoshop}</h3>
+    </div>
 
-    <h3>📘 AutoCAD referral: {total_autocad}</h3>
-
-    <h3>🎨 Photoshop referral: {total_photoshop}</h3>
-
-    <hr>
-
+    <div class="card">
     <h2>📢 Broadcast</h2>
 
     <form method="POST" enctype="multipart/form-data">
@@ -214,7 +282,6 @@ def home():
     <textarea
     name="message"
     rows="5"
-    cols="40"
     placeholder="Xabar yozing"></textarea>
 
     <br><br>
@@ -224,51 +291,48 @@ def home():
     <br><br>
 
     <button type="submit">
-    Yuborish
+    📤 Yuborish
     </button>
 
     </form>
 
     <p>{result}</p>
+    </div>
 
-    <hr>
-
+    <div class="card">
     <h2>🏆 TOP Referral</h2>
 
-    <table border="1" cellpadding="10">
+    <table>
+    <tr>
+    <th>O‘rin</th>
+    <th>Ism</th>
+    <th>Referral</th>
+    </tr>
 
-<tr>
-<th>O‘rin</th>
-<th>Ism</th>
-<th>Referral</th>
-</tr>
+    {top_html}
 
-{top_html}
+    </table>
+    </div>
 
-</table>
-
-    <hr>
-
+    <div class="card">
     <h2>👥 User List</h2>
 
-    <table border="1" cellpadding="10">
+    <table>
 
     <tr>
-
     <th>User ID</th>
-
     <th>AutoCAD</th>
-
     <th>Photoshop</th>
-
     <th>Total</th>
-
     </tr>
 
     {users_html}
 
     </table>
+    </div>
 
+    </body>
+    </html>
     """
 
 
