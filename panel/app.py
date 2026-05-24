@@ -107,16 +107,6 @@ def home():
 
         photo = request.files.get("photo")
 
-        for user_id in users:
-
-            try:
-
-                if request.method == "POST":
-
-        text = request.form["message"]
-
-        photo = request.files.get("photo")
-
         photo_data = None
 
         if photo and photo.filename != "":
@@ -150,20 +140,6 @@ def home():
 
         result = f"✅ {sent} ta userga yuborildi"
 
-                else:
-
-                    bot.send_message(
-                        int(user_id),
-                        text
-                    )
-
-                sent += 1
-
-            except Exception as e:
-
-                print(e)
-
-        result = f"✅ {sent} ta userga yuborildi"
 
     top_html = ""
 
