@@ -143,9 +143,35 @@ def home():
 
     top_html = ""
 
-    for user_id, total in top_users[:10]:
+    medals = ["🥇", "🥈", "🥉"]
 
-        top_html += f"<li>{user_id} — {total} ta referral</li>"
+    for i, (user_id, total) in enumerate(top_users[:10]):
+
+        try:
+
+            user = bot.get_chat(int(user_id))
+
+            name = user.first_name
+
+        except:
+
+            name = f"User {user_id}"
+
+        if i < 3:
+
+            medal = medals[i]
+
+        else:
+
+            medal = f"{i+1}."
+
+        top_html += f"""
+        <tr>
+            <td>{medal}</td>
+            <td>{name}</td>
+            <td>{total}</td>
+        </tr>
+        """
 
 
     users_html = ""
@@ -209,7 +235,17 @@ def home():
 
     <h2>🏆 TOP Referral</h2>
 
-    <p>TOP referral list</p>
+    <table border="1" cellpadding="10">
+
+<tr>
+<th>O‘rin</th>
+<th>Ism</th>
+<th>Referral</th>
+</tr>
+
+{top_html}
+
+</table>
 
     <hr>
 
