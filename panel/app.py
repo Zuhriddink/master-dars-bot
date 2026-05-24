@@ -101,46 +101,38 @@ def home():
 
     sent = 0
 
-    text = request.form["message"]
-photo = request.files.get("photo")
+    if request.method == "POST":
 
-for user_id in users:
+        text = request.form["message"]
 
-    try:
-
-        if photo and photo.filename != "":
-
-            photo.seek(0)
-
-            bot.send_photo(
-                int(user_id),
-                photo,
-                caption=text
-            )
-
-        else:
-
-            bot.send_message(
-                int(user_id),
-                text
-            )
-
-        sent += 1
-
-    except Exception as e:
-
-        print(e)
+        photo = request.files.get("photo")
 
         for user_id in users:
 
             try:
 
-                bot.send_message(int(user_id), text)
+                if photo and photo.filename != "":
+
+                    photo.seek(0)
+
+                    bot.send_photo(
+                        int(user_id),
+                        photo,
+                        caption=text
+                    )
+
+                else:
+
+                    bot.send_message(
+                        int(user_id),
+                        text
+                    )
 
                 sent += 1
 
-            except:
-                pass
+            except Exception as e:
+
+                print(e)
 
         result = f"✅ {sent} ta userga yuborildi"
 
@@ -186,8 +178,6 @@ for user_id in users:
 
     <h2>📢 Broadcast</h2>
 
-    <form method="POST">
-
     <form method="POST" enctype="multipart/form-data">
 
     <textarea
@@ -199,14 +189,6 @@ for user_id in users:
     <br><br>
 
     <input type="file" name="photo">
-
-    <br><br>
-
-    <button type="submit">
-    Yuborish
-    </button>
-
-    </form>
 
     <br><br>
 
