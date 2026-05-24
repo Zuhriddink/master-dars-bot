@@ -265,8 +265,6 @@ def home():
 
     </tr>
 
-    {top_html}
-
     {users_html}
 
     </table>
