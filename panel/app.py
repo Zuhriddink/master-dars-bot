@@ -101,9 +101,35 @@ def home():
 
     sent = 0
 
-    if request.method == "POST":
+    text = request.form["message"]
+photo = request.files.get("photo")
 
-        text = request.form["message"]
+for user_id in users:
+
+    try:
+
+        if photo and photo.filename != "":
+
+            photo.seek(0)
+
+            bot.send_photo(
+                int(user_id),
+                photo,
+                caption=text
+            )
+
+        else:
+
+            bot.send_message(
+                int(user_id),
+                text
+            )
+
+        sent += 1
+
+    except Exception as e:
+
+        print(e)
 
         for user_id in users:
 
@@ -162,11 +188,25 @@ def home():
 
     <form method="POST">
 
+    <form method="POST" enctype="multipart/form-data">
+
     <textarea
     name="message"
     rows="5"
     cols="40"
     placeholder="Xabar yozing"></textarea>
+
+    <br><br>
+
+    <input type="file" name="photo">
+
+    <br><br>
+
+    <button type="submit">
+    Yuborish
+    </button>
+
+    </form>
 
     <br><br>
 
