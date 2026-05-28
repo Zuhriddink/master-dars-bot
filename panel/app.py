@@ -332,12 +332,6 @@ def home():
 
     <input type="file" name="photo">
 
-    <br><br>
-
-<input
-type="text"
-name="reset_user"
-placeholder="Referral reset uchun User ID">
 
     <br><br>
 
@@ -355,6 +349,25 @@ placeholder="Referral reset uchun User ID">
     </form>
 
     <p>{result}</p>
+
+    <hr>
+
+<h2>🧹 Referral Reset</h2>
+
+<form method="POST">
+
+<input
+type="text"
+name="reset_user"
+placeholder="User ID">
+
+<br><br>
+
+<button type="submit">
+Reset Referral
+</button>
+
+</form>
     </div>
 
     <div class="card">
