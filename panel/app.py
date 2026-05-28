@@ -172,17 +172,19 @@ def home():
 
             print(f"SENT: {local_sent}")
 
-        threading.Thread(
-            target=send_broadcast
-        ).start()
+        if not reset_user:
 
-        if delay > 0:
+            threading.Thread(
+                target=send_broadcast
+            ).start()
 
-            result = f"⏰ Xabar {delay} daqiqadan keyin yuboriladi"
+            if delay > 0:
 
-        else:
+                result = f"⏰ Xabar {delay} daqiqadan keyin yuboriladi"
 
-            result = "✅ Xabar yuborish boshlandi"
+            else:
+
+                result = "✅ Xabar yuborish boshlandi"
 
 
     top_html = ""
