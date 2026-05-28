@@ -104,7 +104,7 @@ def home():
 
     if request.method == "POST":
 
-        text = request.form["message"]
+        text = request.form.get("message", "")
 
         delay = int(request.form.get("delay", 0))
 
