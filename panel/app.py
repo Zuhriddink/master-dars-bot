@@ -128,13 +128,11 @@ def home():
 
                 try:
 
-                    if photo and photo.filename != "":
-
-                        photo.seek(0)
+                    if photo_data:
 
                         bot.send_photo(
                             int(user_id),
-                            photo.read(),
+                            photo_data,
                             caption=text
                         )
 
