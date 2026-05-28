@@ -108,6 +108,27 @@ def home():
 
         delay = int(request.form.get("delay", 0))
 
+        reset_user = request.form.get("reset_user")
+
+        if reset_user:
+
+            if reset_user in users:
+
+                users[reset_user]["autocad"] = 0
+                users[reset_user]["photoshop"] = 0
+
+                with open(
+                    os.path.join(BASE_DIR, "users.json"),
+                    "w"
+                ) as f:
+
+                    json.dump(users, f)
+
+                result = f"✅ {reset_user} referrallari reset qilindi"
+
+            else:
+
+                result = "❌ User topilmadi"
         photo = request.files.get("photo")
 
         photo_data = None
@@ -310,6 +331,13 @@ def home():
     <br><br>
 
     <input type="file" name="photo">
+
+    <br><br>
+
+<input
+type="text"
+name="reset_user"
+placeholder="Referral reset uchun User ID">
 
     <br><br>
 
