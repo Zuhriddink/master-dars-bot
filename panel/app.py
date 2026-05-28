@@ -100,35 +100,37 @@ def home():
 
     result = ""
 
-    sent = 0
-
     if request.method == "POST":
 
-        text = request.form.get("message", "")
+    sent = 0
 
-        delay = int(request.form.get("delay", 0))
+    text = request.form.get("message", "")
+    delay = int(request.form.get("delay", 0))
+    reset_user = request.form.get("reset_user")
 
-        reset_user = request.form.get("reset_user")
+    # RESET
+    if reset_user:
 
-        if reset_user:
+        if reset_user in users:
 
-            if reset_user in users:
+            users[reset_user]["autocad"] = 0
+            users[reset_user]["photoshop"] = 0
 
-                users[reset_user]["autocad"] = 0
-                users[reset_user]["photoshop"] = 0
+            with open(
+                os.path.join(BASE_DIR, "users.json"),
+                "w"
+            ) as f:
 
-                with open(
-                    os.path.join(BASE_DIR, "users.json"),
-                    "w"
-                ) as f:
+                json.dump(users, f)
 
-                    json.dump(users, f)
+            result = f"✅ {reset_user} referrallari reset qilindi"
 
-                result = f"✅ {reset_user} referrallari reset qilindi"
+        else:
 
-            else:
+            result = "❌ User topilmadi"
 
-                result = "❌ User topilmadi"
+    else:
+
         photo = request.files.get("photo")
 
         photo_data = None
@@ -139,11 +141,11 @@ def home():
 
         def send_broadcast():
 
+            nonlocal sent
+
             if delay > 0:
 
                 time.sleep(delay * 60)
-
-            local_sent = 0
 
             for user_id in users:
 
@@ -164,28 +166,19 @@ def home():
                             text
                         )
 
-                    local_sent += 1
+                    sent += 1
 
                 except Exception as e:
 
                     print(e)
 
-            print(f"SENT: {local_sent}")
+            print(f"Broadcast sent: {sent}")
 
-        if not reset_user:
+        threading.Thread(
+            target=send_broadcast
+        ).start()
 
-            threading.Thread(
-                target=send_broadcast
-            ).start()
-
-            if delay > 0:
-
-                result = f"⏰ Xabar {delay} daqiqadan keyin yuboriladi"
-
-            else:
-
-                result = "✅ Xabar yuborish boshlandi"
-
+        result = "✅ Xabar yuborish boshlandi"
 
     top_html = ""
 
