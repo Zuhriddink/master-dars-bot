@@ -4,6 +4,7 @@ import json
 import sys
 from flask import Flask, request, session, redirect
 import telebot
+import time
 
 TOKEN = "8961895801:AAGBJhkydB3ZtnkMjFQwJ7rak60mXeEUPg4"
 
@@ -105,6 +106,8 @@ def home():
 
         text = request.form["message"]
 
+        delay = int(request.form.get("delay", 0))
+
         photo = request.files.get("photo")
 
         photo_data = None
@@ -113,32 +116,54 @@ def home():
 
             photo_data = photo.read()
 
-        for user_id in users:
+        def send_broadcast():
 
-            try:
+            if delay > 0:
 
-                if photo_data:
+                time.sleep(delay * 60)
 
-                    bot.send_photo(
-                        int(user_id),
-                        photo_data,
-                        caption=text
-                    )
+            local_sent = 0
 
-                else:
+            for user_id in users:
 
-                    bot.send_message(
-                        int(user_id),
-                        text
-                    )
+                try:
 
-                sent += 1
+                    if photo and photo.filename != "":
 
-            except Exception as e:
+                        photo.seek(0)
 
-                print(e)
+                        bot.send_photo(
+                            int(user_id),
+                            photo.read(),
+                            caption=text
+                        )
 
-        result = f"✅ {sent} ta userga yuborildi"
+                    else:
+
+                        bot.send_message(
+                            int(user_id),
+                            text
+                        )
+
+                    local_sent += 1
+
+                except Exception as e:
+
+                    print(e)
+
+            print(f"SENT: {local_sent}")
+
+        threading.Thread(
+            target=send_broadcast
+        ).start()
+
+        if delay > 0:
+
+            result = f"⏰ Xabar {delay} daqiqadan keyin yuboriladi"
+
+        else:
+
+            result = "✅ Xabar yuborish boshlandi"
 
 
     top_html = ""
@@ -287,6 +312,13 @@ def home():
     <br><br>
 
     <input type="file" name="photo">
+
+    <br><br>
+
+    <input
+    type="number"
+    name="delay"
+    placeholder="Necha daqiqadan keyin yuborilsin (0 = hozir)">
 
     <br><br>
 
