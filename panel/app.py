@@ -102,11 +102,11 @@ def home():
 
     if request.method == "POST":
 
-    sent = 0
+        sent = 0
 
-    text = request.form.get("message", "")
-    delay = int(request.form.get("delay", 0))
-    reset_user = request.form.get("reset_user")
+        text = request.form.get("message", "")
+        delay = int(request.form.get("delay", 0))
+        reset_user = request.form.get("reset_user")
 
     # RESET
     if reset_user:
