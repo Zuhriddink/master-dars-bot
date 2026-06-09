@@ -128,6 +128,7 @@ def start(message):
 
     user_id = str(message.from_user.id)
 
+    is_new_user = user_id not in load_users()
     users = create_user(user_id)
 
     courses = load_courses()
@@ -144,6 +145,7 @@ def start(message):
             referrer_id, course_key = ref.split("_", 1)
 
             if (
+                is_new_user
                 referrer_id != user_id
                 and referrer_id in users
                 and course_key in courses
