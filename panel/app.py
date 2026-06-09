@@ -6,7 +6,7 @@ from flask import Flask, request, session, redirect
 import telebot
 import time
 
-TOKEN = "8961895801:AAGBJhkydB3ZtnkMjFQwJ7rak60mXeEUPg4"
+TOKEN = "8961895801:AAHuSm3LrLVUlfWwCRHoPw8q3TxY4XWSAwg"
 
 bot = telebot.TeleBot(TOKEN)
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -82,23 +82,24 @@ def home():
 
     for user_id, data in users.items():
 
-    total = sum(
-        data.get("referrals", {}).values()
-    )
+        total = sum(
+            data.get("referrals", {}).values()
+        )
 
-    top_users.append((user_id, total))
+        top_users.append((user_id, total))
 
     top_users = sorted(
         top_users,
         key=lambda x: x[1],
         reverse=True
     )
+
     total_users = len(users)
 
     total_referrals = sum(
-    sum(user.get("referrals", {}).values())
-    for user in users.values()
-)
+        sum(user.get("referrals", {}).values())
+        for user in users.values()
+    )
 
     result = ""
     reset_user = None
@@ -342,21 +343,34 @@ def home():
             data.get("referrals", {}).values()
         )
 
+        opened = len(
+            data.get("opened_courses", [])
+        )
+
+        try:
+
+            user = bot.get_chat(int(user_id))
+
+            name = user.first_name
+
+        except:
+
+            name = "Noma'lum"
+
         users_html += f"""
 
-    <tr>
+<tr>
 
-    <td>{user_id}</td>
+<td>{user_id}</td>
 
-    <td>{data.get("autocad", 0)}</td>
+<td>{name}</td>
 
-    <td>{data.get("photoshop", 0)}</td>
+<td>{total}</td>
 
-    <td>{total}</td>
+<td>{opened}</td>
 
-    </tr>
-
-    """
+</tr>
+"""
     return f"""
     <html>
 
@@ -604,9 +618,9 @@ Search
 
     <tr>
     <th>User ID</th>
-    <th>AutoCAD</th>
-    <th>Photoshop</th>
-    <th>Total</th>
+<th>Ism</th>
+<th>Total Referral</th>
+<th>Opened Courses</th>
     </tr>
 
     {users_html}
