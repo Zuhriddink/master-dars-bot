@@ -59,7 +59,12 @@ def login():
 
     """
 
+@app.route("/logout")
+def logout():
 
+    session.pop("admin", None)
+
+    return redirect("/login")
 @app.route("/", methods=["GET", "POST"])
 
 def home():
@@ -77,9 +82,11 @@ def home():
 
     for user_id, data in users.items():
 
-        total = data.get("autocad", 0) + data.get("photoshop", 0)
+    total = sum(
+        data.get("referrals", {}).values()
+    )
 
-        top_users.append((user_id, total))
+    top_users.append((user_id, total))
 
     top_users = sorted(
         top_users,
@@ -88,17 +95,13 @@ def home():
     )
     total_users = len(users)
 
-    total_autocad = sum(
-        user.get("autocad", 0)
-        for user in users.values()
-    )
-
-    total_photoshop = sum(
-        user.get("photoshop", 0)
-        for user in users.values()
-    )
+    total_referrals = sum(
+    sum(user.get("referrals", {}).values())
+    for user in users.values()
+)
 
     result = ""
+    reset_user = None
 
     if request.method == "POST":
 
@@ -107,78 +110,196 @@ def home():
         text = request.form.get("message", "")
         delay = int(request.form.get("delay", 0))
         reset_user = request.form.get("reset_user")
+        delete_user = request.form.get("delete_user")
+        grant_user = request.form.get("grant_user")
+        grant_course = request.form.get("grant_course")
+        search_user = request.form.get("search_user")
 
     # RESET
-    if reset_user:
+        if reset_user:
 
-        if reset_user in users:
+            if reset_user in users:
 
-            users[reset_user]["autocad"] = 0
-            users[reset_user]["photoshop"] = 0
+                users[reset_user]["autocad"] = 0
+                users[reset_user]["photoshop"] = 0
 
-            with open(
-                os.path.join(BASE_DIR, "users.json"),
-                "w"
-            ) as f:
+                with open(
+                    os.path.join(BASE_DIR, "users.json"),
+                    "w"
+                ) as f:
 
-                json.dump(users, f)
+                    json.dump(users, f)
 
-            result = f"✅ {reset_user} referrallari reset qilindi"
+                result = f"✅ {reset_user} referrallari reset qilindi"
 
+            else:
+
+                result = "❌ User topilmadi"
+
+        # DELETE USER
+        elif delete_user:
+
+            if delete_user in users:
+
+                del users[delete_user]
+
+                with open(
+                    os.path.join(BASE_DIR, "users.json"),
+                    "w"
+                ) as f:
+
+                    json.dump(users, f)
+
+                result = f"🗑 {delete_user} o‘chirildi"
+
+            else:
+
+                result = "❌ User topilmadi"
+    # GRANT COURSE
+        elif grant_user:
+
+            if grant_user in users:
+
+                if grant_course == "autocad":
+
+                    users[grant_user]["autocad"] = 10
+
+                elif grant_course == "photoshop":
+
+                    users[grant_user]["photoshop"] = 10
+
+                with open(
+                    os.path.join(BASE_DIR, "users.json"),
+                    "w"
+                ) as f:
+
+                    json.dump(users, f)
+
+                result = f"🎓 {grant_user} uchun {grant_course} kursi ochili"
+            else:
+
+                result = "❌ User topilmadi"
+
+    # SEARCH USER
+        elif search_user:
+
+            if search_user in users:
+
+                data = users[search_user]
+
+                total = (
+                    data.get("autocad", 0)
+                    + data.get("photoshop", 0)
+                )
+
+                result = f"""
+🔍 User: {search_user}
+
+📘 AutoCAD: {data.get("autocad", 0)}
+🎨 Photoshop: {data.get("photoshop", 0)}
+🏆 Total: {total}
+🎁 Offer sent: {data.get("offer_sent", False)}
+⏰ Time: {data.get("time", 0)}
+"""
+
+
+            else:
+
+                result = "❌ User topilmadi"
         else:
 
-            result = "❌ User topilmadi"
+            photo = request.files.get("photo")
 
-    else:
+            photo_data = None
 
-        photo = request.files.get("photo")
+            if photo and photo.filename != "":
 
-        photo_data = None
+                photo_data = photo.read()
 
-        if photo and photo.filename != "":
+            def send_broadcast():
 
-            photo_data = photo.read()
+                nonlocal sent
 
-        def send_broadcast():
+                if delay > 0:
 
-            nonlocal sent
+                    time.sleep(delay * 60)
 
-            if delay > 0:
+                for user_id in users:
 
-                time.sleep(delay * 60)
+                    try:
 
-            for user_id in users:
+                        if photo_data:
 
-                try:
+                            bot.send_photo(
+                                int(user_id),
+                                photo_data,
+                                caption=text
+                            )
 
-                    if photo_data:
+                        else:
 
-                        bot.send_photo(
-                            int(user_id),
-                            photo_data,
-                            caption=text
-                        )
+                            bot.send_message(
+                                int(user_id),
+                                text
+                            )
 
-                    else:
+                        sent += 1
 
-                        bot.send_message(
-                            int(user_id),
-                            text
-                        )
+                    except Exception as e:
 
-                    sent += 1
+                        print(e)
 
-                except Exception as e:
+                print(f"Broadcast sent: {sent}")
 
-                    print(e)
+                history_path = os.path.join(
+                    BASE_DIR,
+                    "history.json"
+                )
 
-            print(f"Broadcast sent: {sent}")
+                with open(history_path, "r") as f:
 
-        threading.Thread(
-            target=send_broadcast
-        ).start()
+                    history = json.load(f)
 
-        result = "✅ Xabar yuborish boshlandi"
+                history.append({
+
+                    "time": time.time(),
+                    "sent": sent,
+                    "text": text,
+                    "photo": bool(photo_data)
+
+                })
+
+                with open(history_path, "w") as f:
+
+                    json.dump(history, f)
+
+            threading.Thread(
+                target=send_broadcast
+            ).start()
+
+            result = "✅ Xabar yuborish boshlandi"
+
+    history_html = ""
+
+    history_path = os.path.join(
+        BASE_DIR,
+        "history.json"
+    )
+
+    with open(history_path, "r") as f:
+
+        history = json.load(f)
+
+    for item in reversed(history[-10:]):
+
+        history_html += f"""
+<tr>
+<td>{time.strftime('%d-%m-%Y %H:%M', time.localtime(item["time"]))}</td>
+<td>{item["text"]}</td>
+<td>{item["sent"]}</td>
+<td>{item["photo"]}</td>
+</tr>
+"""
 
     top_html = ""
 
@@ -217,7 +338,9 @@ def home():
 
     for user_id, data in users.items():
 
-        total = data.get("autocad", 0) + data.get("photoshop", 0)
+        total = sum(
+            data.get("referrals", {}).values()
+        )
 
         users_html += f"""
 
@@ -306,11 +429,17 @@ def home():
     <body>
 
     <h1>🔥 MASTER DARS ADMIN PANEL</h1>
+    <a href="/logout">
+<button>
+🚪 Logout
+</button>
+</a>
+
+<br><br>
 
     <div class="card">
     <h2>👥 Userlar: {total_users}</h2>
-    <h3>📘 AutoCAD: {total_autocad}</h3>
-    <h3>🎨 Photoshop: {total_photoshop}</h3>
+    <h3>🏆 Jami referral: {total_referrals}</h3>
     </div>
 
     <div class="card">
@@ -363,6 +492,94 @@ Reset Referral
 </button>
 
 </form>
+
+<hr>
+
+<h2>🗑 Delete User</h2>
+
+<form method="POST">
+
+<input
+type="text"
+name="delete_user"
+placeholder="User ID">
+
+<br><br>
+
+<button type="submit">
+Delete User
+</button>
+
+</form>
+<hr>
+
+<h2>🎓 Grant Course</h2>
+
+<form method="POST">
+
+<input
+type="text"
+name="grant_user"
+placeholder="User ID">
+
+<br><br>
+
+<select name="grant_course">
+
+<option value="autocad">
+AutoCAD
+</option>
+
+<option value="photoshop">
+Photoshop
+</option>
+
+</select>
+
+<br><br>
+
+<button type="submit">
+Open Course
+</button>
+
+</form>
+
+<hr>
+
+<h2>🔍 Search User</h2>
+
+<form method="POST">
+
+<input
+type="text"
+name="search_user"
+placeholder="User ID">
+
+<br><br>
+
+<button type="submit">
+Search
+</button>
+
+</form>
+
+<p>{result}</p>
+<hr>
+
+<h2>📜 Broadcast History</h2>
+
+<table border="1" cellpadding="10">
+
+<tr>
+<th>Vaqt</th>
+<th>Xabar</th>
+<th>Sent</th>
+<th>Photo</th>
+</tr>
+
+{history_html}
+
+</table>
     </div>
 
     <div class="card">

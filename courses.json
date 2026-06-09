@@ -1,0 +1,89 @@
+{
+"programming": {
+"name": "💻 Dasturlash",
+"required": 10,
+"lessons": "200+",
+"info": "JavaScript, Python, PHP, C++, Java, CSS, Bootstrap, Frontend, HTML",
+"link": "https://t.me/+qCvqG4wrNsYzYmE6"
+},
+
+"office": {
+"name": "💼 Office dasturlari",
+"required": 10,
+"lessons": "50+",
+"info": "MS Word, MS Excel, MS PowerPoint",
+"link": "https://t.me/+xZD961pGeTVhNTYy"
+},
+
+"buxgalteriya": {
+"name": "📒 1C Buxgalteriya",
+"required": 10,
+"lessons": "18",
+"info": "1C Buxgalteriya dasturida ishlash",
+"link": "https://t.me/+sDDwDNEb_PdiMDM6"
+},
+
+"languages": {
+"name": "🌍 Chet tillari",
+"required": 10,
+"lessons": "220+",
+"info": "Ingliz, Rus, Nemis, Koreys, Xitoy tillari",
+"link": "https://t.me/+7k5VNrrtLwQ3MTgy"
+},
+
+"autocad": {
+"name": "📐 AutoCAD",
+"required": 10,
+"lessons": "44",
+"info": "2D va 3D AutoCAD",
+"link": "https://t.me/+6i0sOENQzk8wZmUy"
+},
+
+"max3d": {
+"name": "🏠 3Ds Max",
+"required": 10,
+"lessons": "74",
+"info": "3Ds Max, Compass 3D, render va dizayn",
+"link": "https://t.me/+LAwcaXimVowxMDA6"
+},
+
+"photoshop": {
+"name": "🎨 Photoshop",
+"required": 10,
+"lessons": "59",
+"info": "Photoshop, Adobe XD, Figma",
+"link": "https://t.me/+-0nM3acocU1mY2Uy"
+},
+
+"coreldraw": {
+"name": "🖌 Corel Draw",
+"required": 10,
+"lessons": "50+",
+"info": "Corel Draw va Blender",
+"link": "https://t.me/+8KDNLcWaGbkyZTJi"
+},
+
+"revit": {
+"name": "🏗 Revit",
+"required": 10,
+"lessons": "77",
+"info": "Revit dasturida to‘liq ishlash",
+"link": "https://t.me/+D7PMeyIvKHVjYjcy"
+},
+
+"video": {
+"name": "🎬 Videomontaj",
+"required": 10,
+"lessons": "32",
+"info": "Adobe Premiere Pro va After Effects",
+"link": "https://t.me/+iUPOt6f5BaI0ZGMy"
+},
+
+"telegrambot": {
+"name": "🤖 Telegram Bot Yasash",
+"required": 10,
+"lessons": "40",
+"info": "Python, PHP, Java va kodsiz bot yasash",
+"link": "https://t.me/+WcEIpoBrk_FmNWVi"
+}
+}
