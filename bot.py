@@ -13,7 +13,7 @@ bot = telebot.TeleBot(TOKEN)
 # ---------- FILES ----------
 
 USERS_FILE = "users.json"
-COURSES_FILE = "courses.json"
+COURSES_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "courses.json")
 
 # ---------- LOAD USERS ----------
 
