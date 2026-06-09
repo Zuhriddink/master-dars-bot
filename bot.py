@@ -5,7 +5,7 @@ import os
 import time
 import threading
 
-TOKEN = "8961895801:AAGBJhkydB3ZtnkMjFQwJ7rak60mXeEUPg4"
+TOKEN = "8961895801:AAHuSm3LrLVUlfWwCRHoPw8q3TxY4XWSAwg"
 ADMIN_ID = 1420365532
 
 bot = telebot.TeleBot(TOKEN)
