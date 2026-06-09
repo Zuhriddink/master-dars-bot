@@ -146,7 +146,7 @@ def start(message):
 
             if (
                 is_new_user
-                referrer_id != user_id
+                and referrer_id != user_id
                 and referrer_id in users
                 and course_key in courses
             ):
