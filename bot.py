@@ -7,6 +7,7 @@ import threading
 
 TOKEN = "8961895801:AAHuSm3LrLVUlfWwCRHoPw8q3TxY4XWSAwg"
 ADMIN_ID = 1420365532
+search_user_mode = set()
 
 bot = telebot.TeleBot(TOKEN)
 
@@ -580,6 +581,57 @@ def admin_users_count(message):
         message.chat.id,
         f"👥 Jami userlar: {len(users)}"
     )
+@bot.message_handler(
+    func=lambda m: m.chat.id in search_user_mode
+)
+def search_user(message):
+
+    if message.from_user.id != ADMIN_ID:
+        return
+
+    search_user_mode.discard(message.chat.id)
+
+    user_id = message.text.strip()
+
+    users = load_users()
+
+    if user_id not in users:
+        bot.send_message(
+            message.chat.id,
+            "❌ User topilmadi"
+        )
+        return
+
+    data = users[user_id]
+
+    total_referrals = sum(
+        data.get("referrals", {}).values()
+    )
+
+    opened = len(
+        data.get("opened_courses", [])
+    )
+
+    try:
+        tg_user = bot.get_chat(int(user_id))
+        name = tg_user.first_name
+    except:
+        name = "Noma'lum"
+
+    bot.send_message(
+        message.chat.id,
+        f"""
+👤 Ism: {name}
+
+🆔 ID: {user_id}
+
+🏆 Referral: {total_referrals}
+
+📚 Ochilgan kurslar: {opened}
+
+🕒 Oxirgi kurs: {data.get('last_course', '-')}
+"""
+    )
 def check_users():
 
     users = load_users()
@@ -716,6 +768,20 @@ def my_id(message):
     bot.send_message(
         message.chat.id,
         str(message.from_user.id)
+    )
+@bot.message_handler(
+    func=lambda m: m.text == "🔍 User qidirish"
+)
+def search_user_start(message):
+
+    if message.from_user.id != ADMIN_ID:
+        return
+
+    search_user_mode.add(message.chat.id)
+
+    bot.send_message(
+        message.chat.id,
+        "🔍 User ID yuboring"
     )
 threading.Thread(
     target=reminder_loop,
