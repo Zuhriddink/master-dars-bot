@@ -566,6 +566,20 @@ def statistics(message):
         message.chat.id,
         text
     )
+@bot.message_handler(
+    func=lambda m: m.text == "👥 Userlar soni"
+)
+def admin_users_count(message):
+
+    if message.from_user.id != ADMIN_ID:
+        return
+
+    users = load_users()
+
+    bot.send_message(
+        message.chat.id,
+        f"👥 Jami userlar: {len(users)}"
+    )
 def check_users():
 
     users = load_users()
