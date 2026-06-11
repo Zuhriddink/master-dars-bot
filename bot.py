@@ -12,8 +12,10 @@ bot = telebot.TeleBot(TOKEN)
 
 # ---------- FILES ----------
 
-USERS_FILE = "users.json"
-COURSES_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "courses.json")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+USERS_FILE = os.path.join(BASE_DIR, "users.json")
+COURSES_FILE = os.path.join(BASE_DIR, "courses.json")
 
 # ---------- LOAD USERS ----------
 
@@ -638,12 +640,75 @@ def reminder_loop():
             print("Reminder error:", e)
 
         time.sleep(3600)  # har 1 soatda
+
+@bot.message_handler(commands=['admin'])
+def admin_panel(message):
+
+    if message.from_user.id != ADMIN_ID:
+        return
+
+    markup = types.ReplyKeyboardMarkup(
+        resize_keyboard=True
+    )
+
+    markup.row("📊 Statistika")
+    markup.row("👥 Userlar soni")
+
+    markup.row("📢 Broadcast")
+    markup.row("🎓 Kurs ochish")
+
+    markup.row("🔍 User qidirish")
+    markup.row("🏆 TOP Referral")
+
+    markup.row("🧹 Referral reset")
+    markup.row("🗑 Delete User")
+    bot.send_message(
+        message.chat.id,
+        "🛠 Admin Panel",
+        reply_markup=markup
+    )
+@bot.message_handler(
+    func=lambda m: m.text == "📊 Statistika"
+)
+def admin_stats(message):
+
+    if message.from_user.id != ADMIN_ID:
+        return
+
+    users = load_users()
+
+    total_users = len(users)
+
+    total_referrals = 0
+
+    for data in users.values():
+
+        total_referrals += sum(
+            data.get("referrals", {}).values()
+        )
+
+    bot.send_message(
+        message.chat.id,
+        f"""
+📊 Bot statistikasi
+
+👥 Userlar: {total_users}
+
+🏆 Jami referral: {total_referrals}
+"""
+)
+@bot.message_handler(commands=['id'])
+def my_id(message):
+    bot.send_message(
+        message.chat.id,
+        str(message.from_user.id)
+    )
 threading.Thread(
     target=reminder_loop,
     daemon=True
 ).start()
 print("Bot ishga tushdi...")
-
+    
 bot.infinity_polling(
     timeout=10,
     long_polling_timeout=5
