@@ -717,10 +717,17 @@ def grant_course_finish(message):
         return
 
     courses_map = {
-        "📐 AutoCAD": "autocad",
-        "🎨 Photoshop": "photoshop",
-        "🏠 3Ds Max": "max3d",
-        "🏗 Revit": "revit"
+        "1️⃣ Dasturlash": "programming",
+        "2️⃣ Office": "office",
+        "3️⃣ Buxgalteriya": "buxgalteriya",
+        "4️⃣ Chet tillari": "languages",
+        "5️⃣ AutoCAD": "autocad",
+        "6️⃣ 3Ds Max": "max3d",
+        "7️⃣ Photoshop": "photoshop",
+        "8️⃣ Corel Draw": "coreldraw",
+        "9️⃣ Revit": "revit",
+        "🔟 Videomontaj": "video",
+        "1️⃣1️⃣ Telegram Bot": "telegrambot"
     }
 
     if message.text not in courses_map:
@@ -738,9 +745,13 @@ def grant_course_finish(message):
     save_users(users)
 
     try:
+        courses = load_courses()
+
+        course_name = courses[course_key]["name"]
+
         bot.send_message(
             int(target_user),
-            f"🎉 Tabriklaymiz!\n\nSizga {message.text} kursi ochildi."
+            f"🎉 Tabriklaymiz!\n\nSizga {course_name} kursi ochildi."
         )
     except:
         pass
@@ -869,10 +880,17 @@ def grant_course_user(message):
         resize_keyboard=True
     )
 
-    markup.row("📐 AutoCAD")
-    markup.row("🎨 Photoshop")
-    markup.row("🏠 3Ds Max")
-    markup.row("🏗 Revit")
+    markup.row("1️⃣ Dasturlash")
+    markup.row("2️⃣ Office")
+    markup.row("3️⃣ Buxgalteriya")
+    markup.row("4️⃣ Chet tillari")
+    markup.row("5️⃣ AutoCAD")
+    markup.row("6️⃣ 3Ds Max")
+    markup.row("7️⃣ Photoshop")
+    markup.row("8️⃣ Corel Draw")
+    markup.row("9️⃣ Revit")
+    markup.row("🔟 Videomontaj")
+    markup.row("1️⃣1️⃣ Telegram Bot")
 
     bot.send_message(
         message.chat.id,
