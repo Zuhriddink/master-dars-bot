@@ -8,6 +8,8 @@ import threading
 TOKEN = "8961895801:AAHuSm3LrLVUlfWwCRHoPw8q3TxY4XWSAwg"
 ADMIN_ID = 1420365532
 search_user_mode = set()
+grant_mode = set()
+grant_user = {}
 
 bot = telebot.TeleBot(TOKEN)
 
@@ -706,6 +708,49 @@ def reminder_loop():
             print("Reminder error:", e)
 
         time.sleep(3600)  # har 1 soatda
+@bot.message_handler(
+    func=lambda m: m.chat.id in grant_user
+)
+def grant_course_finish(message):
+
+    if message.from_user.id != ADMIN_ID:
+        return
+
+    courses_map = {
+        "📐 AutoCAD": "autocad",
+        "🎨 Photoshop": "photoshop",
+        "🏠 3Ds Max": "max3d",
+        "🏗 Revit": "revit"
+    }
+
+    if message.text not in courses_map:
+        return
+
+    target_user = grant_user[message.chat.id]
+
+    users = load_users()
+
+    course_key = courses_map[message.text]
+
+    if course_key not in users[target_user]["opened_courses"]:
+        users[target_user]["opened_courses"].append(course_key)
+
+    save_users(users)
+
+    try:
+        bot.send_message(
+            int(target_user),
+            f"🎉 Tabriklaymiz!\n\nSizga {message.text} kursi ochildi."
+        )
+    except:
+        pass
+
+    bot.send_message(
+        message.chat.id,
+        f"✅ {target_user} uchun {message.text} kursi ochildi."
+    )
+
+    del grant_user[message.chat.id]
 
 @bot.message_handler(commands=['admin'])
 def admin_panel(message):
@@ -782,6 +827,57 @@ def search_user_start(message):
     bot.send_message(
         message.chat.id,
         "🔍 User ID yuboring"
+    )
+@bot.message_handler(
+    func=lambda m: m.text == "🎓 Kurs ochish"
+)
+def grant_course_start(message):
+
+    if message.from_user.id != ADMIN_ID:
+        return
+
+    grant_mode.add(message.chat.id)
+
+    bot.send_message(
+        message.chat.id,
+        "🎓 Kurs beriladigan User ID ni yuboring"
+    )
+@bot.message_handler(
+    func=lambda m: m.chat.id in grant_mode
+)
+def grant_course_user(message):
+
+    if message.from_user.id != ADMIN_ID:
+        return
+
+    user_id = message.text.strip()
+
+    users = load_users()
+
+    if user_id not in users:
+        bot.send_message(
+            message.chat.id,
+            "❌ User topilmadi"
+        )
+        return
+
+    grant_mode.discard(message.chat.id)
+
+    grant_user[message.chat.id] = user_id
+
+    markup = types.ReplyKeyboardMarkup(
+        resize_keyboard=True
+    )
+
+    markup.row("📐 AutoCAD")
+    markup.row("🎨 Photoshop")
+    markup.row("🏠 3Ds Max")
+    markup.row("🏗 Revit")
+
+    bot.send_message(
+        message.chat.id,
+        "Kursni tanlang",
+        reply_markup=markup
     )
 threading.Thread(
     target=reminder_loop,
