@@ -911,6 +911,59 @@ threading.Thread(
 ).start()
 print("Bot ishga tushdi...")
     
+@bot.message_handler(
+    func=lambda m: m.chat.id in grant_user
+)
+def grant_course_finish(message):
+
+    if message.from_user.id != ADMIN_ID:
+        return
+
+    courses_map = {
+        "1️⃣ Dasturlash": "programming",
+        "2️⃣ Office": "office",
+        "3️⃣ Buxgalteriya": "buxgalteriya",
+        "4️⃣ Chet tillari": "languages",
+        "5️⃣ AutoCAD": "autocad",
+        "6️⃣ 3Ds Max": "max3d",
+        "7️⃣ Photoshop": "photoshop",
+        "8️⃣ Corel Draw": "coreldraw",
+        "9️⃣ Revit": "revit",
+        "🔟 Videomontaj": "video",
+        "1️⃣1️⃣ Telegram Bot": "telegrambot"
+    }
+
+    if message.text not in courses_map:
+        return
+
+    target_user = str(grant_user[message.chat.id])
+
+    users = load_users()
+
+    course_key = courses_map[message.text]
+
+    if course_key not in users[target_user]["opened_courses"]:
+        users[target_user]["opened_courses"].append(course_key)
+
+    save_users(users)
+
+    courses = load_courses()
+    course_name = courses[course_key]["name"]
+
+    try:
+        bot.send_message(
+            int(target_user),
+            f"🎉 Tabriklaymiz!\n\nSizga {course_name} kursi ochildi."
+        )
+    except:
+        pass
+
+    bot.send_message(
+        message.chat.id,
+        f"✅ {target_user} uchun {course_name} kursi ochildi."
+    )
+
+    del grant_user[message.chat.id]
 bot.infinity_polling(
     timeout=10,
     long_polling_timeout=5
