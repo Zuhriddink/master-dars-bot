@@ -741,6 +741,14 @@ def grant_course_finish(message):
 
     if course_key not in users[target_user]["opened_courses"]:
         users[target_user]["opened_courses"].append(course_key)
+    print("TARGET =", target_user)
+    print("COURSE =", course_key)
+    print("BEFORE =", users[target_user]["opened_courses"])
+
+    if course_key not in users[target_user]["opened_courses"]:
+        users[target_user]["opened_courses"].append(course_key)
+
+    print("AFTER =", users[target_user]["opened_courses"])
 
     save_users(users)
 
