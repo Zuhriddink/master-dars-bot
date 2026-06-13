@@ -538,38 +538,6 @@ def top_referral(message):
         text
     )
 @bot.message_handler(
-    func=lambda m: m.text == "📊 Statistika"
-)
-def statistics(message):
-
-    users = load_users()
-
-    user_id = str(message.from_user.id)
-
-    total = sum(
-        users[user_id]["referrals"].values()
-    )
-
-    opened = len(
-        users[user_id]["opened_courses"]
-    )
-
-    text = f"""
-📊 Sizning statistikangiz
-
-👥 Jami referral: {total}
-
-🎓 Ochilgan kurslar: {opened}
-
-🏆 Faollik holati:
-{"🔥 Faol" if total > 0 else "😴 Hali boshlanmagan"}
-"""
-
-    bot.send_message(
-        message.chat.id,
-        text
-    )
-@bot.message_handler(
     func=lambda m: m.text == "👥 Userlar soni"
 )
 def admin_users_count(message):
@@ -708,68 +676,6 @@ def reminder_loop():
             print("Reminder error:", e)
 
         time.sleep(3600)  # har 1 soatda
-@bot.message_handler(
-    func=lambda m: m.chat.id in grant_user
-)
-def grant_course_finish(message):
-
-    if message.from_user.id != ADMIN_ID:
-        return
-
-    courses_map = {
-        "1️⃣ Dasturlash": "programming",
-        "2️⃣ Office": "office",
-        "3️⃣ Buxgalteriya": "buxgalteriya",
-        "4️⃣ Chet tillari": "languages",
-        "5️⃣ AutoCAD": "autocad",
-        "6️⃣ 3Ds Max": "max3d",
-        "7️⃣ Photoshop": "photoshop",
-        "8️⃣ Corel Draw": "coreldraw",
-        "9️⃣ Revit": "revit",
-        "🔟 Videomontaj": "video",
-        "1️⃣1️⃣ Telegram Bot": "telegrambot"
-    }
-
-    if message.text not in courses_map:
-        return
-
-    target_user = grant_user[message.chat.id]
-
-    users = load_users()
-
-    course_key = courses_map[message.text]
-
-    if course_key not in users[target_user]["opened_courses"]:
-        users[target_user]["opened_courses"].append(course_key)
-    print("TARGET =", target_user)
-    print("COURSE =", course_key)
-    print("BEFORE =", users[target_user]["opened_courses"])
-
-    if course_key not in users[target_user]["opened_courses"]:
-        users[target_user]["opened_courses"].append(course_key)
-
-    print("AFTER =", users[target_user]["opened_courses"])
-
-    save_users(users)
-
-    try:
-        courses = load_courses()
-
-        course_name = courses[course_key]["name"]
-
-        bot.send_message(
-            int(target_user),
-            f"🎉 Tabriklaymiz!\n\nSizga {course_name} kursi ochildi."
-        )
-    except:
-        pass
-
-    bot.send_message(
-        message.chat.id,
-        f"✅ {target_user} uchun {message.text} kursi ochildi."
-    )
-
-    del grant_user[message.chat.id]
 
 @bot.message_handler(commands=['admin'])
 def admin_panel(message):
@@ -800,33 +706,26 @@ def admin_panel(message):
 @bot.message_handler(
     func=lambda m: m.text == "📊 Statistika"
 )
-def admin_stats(message):
-
-    if message.from_user.id != ADMIN_ID:
-        return
-
+def statistika(message):
     users = load_users()
-
-    total_users = len(users)
-
-    total_referrals = 0
-
-    for data in users.values():
-
-        total_referrals += sum(
-            data.get("referrals", {}).values()
+    user_id = str(message.from_user.id)
+    if message.from_user.id == ADMIN_ID:
+        total_users = len(users)
+        total_referrals = sum(
+            sum(d.get("referrals", {}).values()) for d in users.values()
         )
-
-    bot.send_message(
-        message.chat.id,
-        f"""
-📊 Bot statistikasi
-
-👥 Userlar: {total_users}
-
-🏆 Jami referral: {total_referrals}
-"""
-)
+        bot.send_message(
+            message.chat.id,
+            f"📊 Bot statistikasi\n\n👥 Userlar: {total_users}\n\n🏆 Jami referral: {total_referrals}"
+        )
+    else:
+        total = sum(users[user_id]["referrals"].values())
+        opened = len(users[user_id]["opened_courses"])
+        faol = "🔥 Faol" if total > 0 else "😴 Hali boshlanmagan"
+        bot.send_message(
+            message.chat.id,
+            f"📊 Sizning statistikangiz\n\n👥 Jami referral: {total}\n\n🎓 Ochilgan kurslar: {opened}\n\n🏆 Faollik holati:\n{faol}"
+        )
 @bot.message_handler(commands=['id'])
 def my_id(message):
     bot.send_message(
