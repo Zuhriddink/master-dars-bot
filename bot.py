@@ -290,7 +290,7 @@ def show_course(message):
 
     user_id = str(message.from_user.id)
 
-    users = load_users()
+    users = create_user(user_id)
 
     courses = load_courses()
 
