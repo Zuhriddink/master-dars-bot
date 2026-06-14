@@ -622,46 +622,29 @@ def check_users():
             passed = now - data["time"]
 
             # 24 soat
+            if user_id == str(ADMIN_ID):
+                continue
+            # 24 soat
             if (
                 total == 0
                 and passed >= 86400
                 and not data["inactive_reminder_sent"]
             ):
-
                 bot.send_message(
                     int(user_id),
-                    """
-🎓 Daromadli kasblarni o‘rganishni boshlang.
-
-Shunchaki 10 ta do‘stingizga botga START bosishini so‘rang.
-
-📚 Premium kurslar avtomatik ochiladi.
-"""
+                    "🎓 Daromadli kasblarni o'rganishni boshlang.\n\nShunchaki 10 ta do'stingizga botga START bosishini so'rang.\n\n📚 Premium kurslar avtomatik ochiladi."
                 )
-
                 data["inactive_reminder_sent"] = True
-
             # 48 soat
             if (
                 1 <= total <= 9
                 and passed >= 172800
                 and not data["offer_sent"]
             ):
-
                 bot.send_message(
                     int(user_id),
-                    """
-🔥 Siz kursni ochishga harakat qildingiz, lekin hali yakunlay olmadingiz.
-
-Hech qisi yo‘q.
-
-💎 Atigi 59 000 so‘m evaziga hohlagan kursingizni hoziroq ochishingiz mumkin.
-
-👨‍💻 Admin:
-@MasterdarsAdmin
-"""
+                    "🔥 Siz kursni ochishga harakat qildingiz, lekin hali yakunlay olmadingiz.\n\nHech qisi yo'q.\n\n💎 Atigi 59 000 so'm evaziga hohlagan kursingizni hoziroq ochishingiz mumkin.\n\n👨\u200d💻 Admin:\n@MasterdarsAdmin"
                 )
-
                 data["offer_sent"] = True
 
         except:
@@ -920,7 +903,7 @@ def broadcast_send(message):
     fail = 0
     for user_id in users:
         try:
-            bot.forward_message(int(user_id), message.chat.id, message.message_id)
+            bot.copy_message(int(user_id), message.chat.id, message.message_id)
             success += 1
         except:
             fail += 1
