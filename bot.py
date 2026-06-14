@@ -797,7 +797,7 @@ threading.Thread(
 print("Bot ishga tushdi...")
     
 @bot.message_handler(
-    func=lambda m: m.chat.id in grant_user
+    func=lambda m: m.chat.id in grant_user and m.chat.id not in broadcast_mode and m.chat.id not in reset_mode and m.chat.id not in delete_mode
 )
 def grant_course_finish(message):
 
