@@ -74,7 +74,8 @@ def create_user(user_id):
             "time": time.time(),
             "inactive_reminder_sent": False,
 
-            "offer_sent": False
+            "offer_sent": False,
+            "offer_sent_2": False
 
         }
 
@@ -625,6 +626,7 @@ def check_users():
             if user_id == str(ADMIN_ID):
                 continue
             # 24 soat
+            # 24 soat - referral=0 bepul taklif
             if (
                 total == 0
                 and passed >= 86400
@@ -635,17 +637,28 @@ def check_users():
                     "🎓 Daromadli kasblarni o'rganishni boshlang.\n\nShunchaki 10 ta do'stingizga botga START bosishini so'rang.\n\n📚 Premium kurslar avtomatik ochiladi."
                 )
                 data["inactive_reminder_sent"] = True
-            # 48 soat
+            # 48 soat - hammaga pulli taklif
             if (
-                1 <= total <= 9
+                0 <= total <= 9
                 and passed >= 172800
-                and not data["offer_sent"]
+                and not data.get("offer_sent", False)
             ):
                 bot.send_message(
                     int(user_id),
-                    "🔥 Siz kursni ochishga harakat qildingiz, lekin hali yakunlay olmadingiz.\n\nHech qisi yo'q.\n\n💎 Atigi 59 000 so'm evaziga hohlagan kursingizni hoziroq ochishingiz mumkin.\n\n👨\u200d💻 Admin:\n@MasterdarsAdmin"
+                    "💎 Kursni hali ocholmadingizmi?\n\nHech qisi yo'q.\n\n💎 Atigi 59 000 so'm evaziga hohlagan kursingizni hoziroq ochishingiz mumkin.\n\n👨\u200d💻 Admin:\n@MasterdarsAdmin"
                 )
                 data["offer_sent"] = True
+            # 120 soat - ikkinchi eslatma
+            if (
+                0 <= total <= 9
+                and passed >= 432000
+                and not data.get("offer_sent_2", False)
+            ):
+                bot.send_message(
+                    int(user_id),
+                    "🔥 Oxirgi eslatma!\n\nKurslarni bepul ochish imkoniyati hali bor.\n\n💎 Yoki atigi 59 000 so'm evaziga hoziroq oching.\n\n👨\u200d💻 Admin:\n@MasterdarsAdmin"
+                )
+                data["offer_sent_2"] = True
 
         except:
             pass
