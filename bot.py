@@ -854,7 +854,7 @@ def grant_course_finish(message):
     try:
         bot.send_message(
             int(target_user),
-            f"🎉 Tabriklaymiz!\n\nSizga {course_name} kursi ochildi."
+            f"🎉 Tabriklaymiz!\n\n🔓 Sizga {course_name} kursi ochildi.\n\n📚 Kurs kanali:\n{courses[course_key]['link']}\n\n━━━━━━━━━━\n🎁 Endi boshqa premium kurslarni ham ochishingiz mumkin."
         )
     except:
         pass
