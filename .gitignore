@@ -220,3 +220,4 @@ __pycache__
 *.pyc
 nohup.out
 users_backup.json
+users.json
