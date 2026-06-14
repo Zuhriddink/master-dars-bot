@@ -10,6 +10,7 @@ ADMIN_ID = 1420365532
 search_user_mode = set()
 grant_mode = set()
 grant_user = {}
+delete_mode = set()
 
 bot = telebot.TeleBot(TOKEN)
 
@@ -863,6 +864,44 @@ def grant_course_finish(message):
     )
 
     del grant_user[message.chat.id]
+@bot.message_handler(func=lambda m: m.text == "🧹 Referral reset" and m.from_user.id == ADMIN_ID)
+def referral_reset_start(message):
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.row("✅ Ha, reset qilish")
+    markup.row("❌ Bekor qilish")
+    bot.send_message(message.chat.id, "⚠️ Barcha referrallarni nolga tushirasizmi?", reply_markup=markup)
+
+@bot.message_handler(func=lambda m: m.text == "✅ Ha, reset qilish" and m.from_user.id == ADMIN_ID)
+def referral_reset_confirm(message):
+    users = load_users()
+    courses = load_courses()
+    for uid in users:
+        for course_key in courses:
+            users[uid]["referrals"][course_key] = 0
+    save_users(users)
+    bot.send_message(message.chat.id, "✅ Barcha referrallar nolga tushirildi.", reply_markup=main_menu())
+
+@bot.message_handler(func=lambda m: m.text == "❌ Bekor qilish" and m.from_user.id == ADMIN_ID)
+def referral_reset_cancel(message):
+    bot.send_message(message.chat.id, "❌ Bekor qilindi.", reply_markup=main_menu())
+
+@bot.message_handler(func=lambda m: m.text == "🗑 Delete User" and m.from_user.id == ADMIN_ID)
+def delete_user_start(message):
+    bot.send_message(message.chat.id, "🗑 O'chirilishi kerak bo'lgan User ID ni yuboring")
+
+@bot.message_handler(func=lambda m: m.chat.id in delete_mode)
+def delete_user_finish(message):
+    if message.from_user.id != ADMIN_ID:
+        return
+    delete_mode.discard(message.chat.id)
+    user_id = message.text.strip()
+    users = load_users()
+    if user_id not in users:
+        bot.send_message(message.chat.id, "❌ User topilmadi")
+        return
+    del users[user_id]
+    save_users(users)
+    bot.send_message(message.chat.id, f"✅ {user_id} o'chirildi.")
 bot.infinity_polling(
     timeout=10,
     long_polling_timeout=5
