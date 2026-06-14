@@ -12,6 +12,7 @@ grant_mode = set()
 grant_user = {}
 delete_mode = set()
 reset_mode = set()
+broadcast_mode = set()
 
 bot = telebot.TeleBot(TOKEN)
 
@@ -904,6 +905,26 @@ def delete_user_finish(message):
     del users[user_id]
     save_users(users)
     bot.send_message(message.chat.id, f"✅ {user_id} o'chirildi.")
+@bot.message_handler(func=lambda m: m.text == "📢 Broadcast" and m.from_user.id == ADMIN_ID)
+def broadcast_start(message):
+    broadcast_mode.add(message.chat.id)
+    bot.send_message(message.chat.id, "📢 Yubormoqchi boqlgan xabarni yozing")
+
+@bot.message_handler(func=lambda m: m.chat.id in broadcast_mode)
+def broadcast_send(message):
+    if message.from_user.id != ADMIN_ID:
+        return
+    broadcast_mode.discard(message.chat.id)
+    users = load_users()
+    success = 0
+    fail = 0
+    for user_id in users:
+        try:
+            bot.forward_message(int(user_id), message.chat.id, message.message_id)
+            success += 1
+        except:
+            fail += 1
+    bot.send_message(message.chat.id, f"✅ Yuborildi: {success}\n❌ Xato: {fail}")
 bot.infinity_polling(
     timeout=10,
     long_polling_timeout=5
