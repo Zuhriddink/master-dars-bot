@@ -893,7 +893,7 @@ def broadcast_start(message):
     broadcast_mode.add(message.chat.id)
     bot.send_message(message.chat.id, "📢 Yubormoqchi boqlgan xabarni yozing")
 
-@bot.message_handler(func=lambda m: m.chat.id in broadcast_mode)
+@bot.message_handler(content_types=["text","photo","video","document","audio","voice","sticker","animation"], func=lambda m: m.chat.id in broadcast_mode)
 def broadcast_send(message):
     if message.from_user.id != ADMIN_ID:
         return
