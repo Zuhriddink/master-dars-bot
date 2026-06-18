@@ -14,7 +14,7 @@ search_user_mode = set()
 grant_mode = set()
 grant_user = {}
 delete_mode = set()
-banned_users = set()
+banned_users = set()  # MongoDB dan yuklanadi
 unban_mode = set()
 reset_mode = set()
 broadcast_mode = set()
@@ -23,8 +23,13 @@ MONGO_URL = os.getenv("MONGO_URL")
 client = MongoClient(MONGO_URL)
 db = client["master_dars"]
 users_col = db["users"]
+banned_col = db["banned"]
 
 bot = telebot.TeleBot(TOKEN)
+
+# Banned userlarni MongoDB dan yuklash
+for doc in banned_col.find():
+    banned_users.add(doc["_id"])
 
 # ---------- FILES ----------
 
@@ -894,6 +899,7 @@ def delete_user_finish(message):
     if user_id not in users:
         bot.send_message(message.chat.id, "❌ User topilmadi")
     banned_users.add(user_id)
+    banned_col.insert_one({"_id": user_id})
     del users[user_id]
     save_users(users)
     bot.send_message(message.chat.id, f"✅ {user_id} bloklandi va o'chirildi.")
@@ -935,6 +941,7 @@ def unban_finish(message):
     user_id = message.text.strip()
     if user_id in banned_users:
         banned_users.discard(user_id)
+        banned_col.delete_one({"_id": user_id})
         bot.send_message(message.chat.id, f"✅ {user_id} unban qilindi.")
     else:
         bot.send_message(message.chat.id, "❌ Bu user banlarda topilmadi.")
