@@ -11,6 +11,7 @@ search_user_mode = set()
 grant_mode = set()
 grant_user = {}
 delete_mode = set()
+banned_users = set()
 reset_mode = set()
 broadcast_mode = set()
 
@@ -136,6 +137,10 @@ def main_menu():
 def start(message):
 
     user_id = str(message.from_user.id)
+
+    if user_id in banned_users:
+        bot.send_message(message.chat.id, "⛔ Bot vaqtincha ish faoliyatida emas.")
+        return
 
     is_new_user = user_id not in load_users()
     users = create_user(user_id)
@@ -289,6 +294,10 @@ COURSE_BUTTONS = {
 def show_course(message):
 
     user_id = str(message.from_user.id)
+
+    if user_id in banned_users:
+        bot.send_message(message.chat.id, "⛔ Bot vaqtincha ish faoliyatida emas.")
+        return
 
     users = create_user(user_id)
 
@@ -897,9 +906,14 @@ def delete_user_finish(message):
     users = load_users()
     if user_id not in users:
         bot.send_message(message.chat.id, "❌ User topilmadi")
-        return
+    banned_users.add(user_id)
     del users[user_id]
     save_users(users)
+    bot.send_message(message.chat.id, f"✅ {user_id} bloklandi va o'chirildi.")
+    try:
+        bot.send_message(int(user_id), "⛔ Bot vaqtincha ish faoliyatida emas.")
+    except:
+        pass
     bot.send_message(message.chat.id, f"✅ {user_id} o'chirildi.")
 @bot.message_handler(func=lambda m: m.text == "📢 Broadcast" and m.from_user.id == ADMIN_ID)
 def broadcast_start(message):
