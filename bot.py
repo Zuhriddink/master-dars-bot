@@ -19,7 +19,7 @@ unban_mode = set()
 reset_mode = set()
 broadcast_mode = set()
 
-MONGO_URL = os.getenv("MONGO_URL")
+MONGO_URL = os.getenv("MONGO_URL", "mongodb+srv://turdiboyevzuhriddin7_db_user:9287870k@cluster0.vva5ok8.mongodb.net/?appName=Cluster0")
 client = MongoClient(MONGO_URL)
 db = client["master_dars"]
 users_col = db["users"]
