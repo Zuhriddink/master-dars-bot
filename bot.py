@@ -12,6 +12,7 @@ grant_mode = set()
 grant_user = {}
 delete_mode = set()
 banned_users = set()
+unban_mode = set()
 reset_mode = set()
 broadcast_mode = set()
 
@@ -706,6 +707,7 @@ def admin_panel(message):
 
     markup.row("🧹 Referral reset")
     markup.row("🗑 Delete User")
+    markup.row("✅ Unban User")
     bot.send_message(
         message.chat.id,
         "🛠 Admin Panel",
@@ -935,6 +937,22 @@ def broadcast_send(message):
         except:
             fail += 1
     bot.send_message(message.chat.id, f"✅ Yuborildi: {success}\n❌ Xato: {fail}")
+@bot.message_handler(func=lambda m: m.text == "✅ Unban User" and m.from_user.id == ADMIN_ID)
+def unban_start(message):
+    unban_mode.add(message.chat.id)
+    bot.send_message(message.chat.id, "✅ Unban qilinadigan User ID ni yuboring")
+
+@bot.message_handler(func=lambda m: m.chat.id in unban_mode)
+def unban_finish(message):
+    if message.from_user.id != ADMIN_ID:
+        return
+    unban_mode.discard(message.chat.id)
+    user_id = message.text.strip()
+    if user_id in banned_users:
+        banned_users.discard(user_id)
+        bot.send_message(message.chat.id, f"✅ {user_id} unban qilindi.")
+    else:
+        bot.send_message(message.chat.id, "❌ Bu user banlarda topilmadi.")
 bot.infinity_polling(
     timeout=10,
     long_polling_timeout=5
