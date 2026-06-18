@@ -1,3 +1,6 @@
+import pymongo
+from pymongo import MongoClient
+
 import telebot
 from telebot import types
 import json
@@ -16,6 +19,11 @@ unban_mode = set()
 reset_mode = set()
 broadcast_mode = set()
 
+MONGO_URL = os.getenv("MONGO_URL")
+client = MongoClient(MONGO_URL)
+db = client["master_dars"]
+users_col = db["users"]
+
 bot = telebot.TeleBot(TOKEN)
 
 # ---------- FILES ----------
@@ -28,24 +36,17 @@ COURSES_FILE = os.path.join(BASE_DIR, "courses.json")
 # ---------- LOAD USERS ----------
 
 def load_users():
-
-    if not os.path.exists(USERS_FILE):
-
-        with open(USERS_FILE, "w") as f:
-
-            json.dump({}, f)
-
-    with open(USERS_FILE, "r") as f:
-
-        return json.load(f)
+    users = {}
+    for doc in users_col.find():
+        uid = doc["_id"]
+        users[uid] = {k: v for k, v in doc.items() if k != "_id"}
+    return users
 
 # ---------- SAVE USERS ----------
 
 def save_users(users):
-
-    with open(USERS_FILE, "w") as f:
-
-        json.dump(users, f, ensure_ascii=False)
+    for uid, data in users.items():
+        users_col.update_one({"_id": uid}, {"$set": data}, upsert=True)
 
 # ---------- LOAD COURSES ----------
 
@@ -58,35 +59,20 @@ def load_courses():
 # ---------- CREATE USER ----------
 
 def create_user(user_id):
-
-    users = load_users()
-
-    if user_id not in users:
-
+    if not users_col.find_one({"_id": user_id}):
         courses = load_courses()
-
-        users[user_id] = {
-
-            "referrals": {},
-
+        referrals = {course_key: 0 for course_key in courses}
+        users_col.insert_one({
+            "_id": user_id,
+            "referrals": referrals,
             "opened_courses": [],
-
             "last_course": "",
-
             "time": time.time(),
             "inactive_reminder_sent": False,
-
             "offer_sent": False,
             "offer_sent_2": False
-
-        }
-
-        for course_key in courses:
-
-            users[user_id]["referrals"][course_key] = 0
-
-        save_users(users)
-
+        })
+    return load_users()
     return users
 
 # ---------- MAIN MENU ----------
@@ -672,7 +658,6 @@ def check_users():
 
         except:
             pass
-
     save_users(users)
 check_users()
 def reminder_loop():
