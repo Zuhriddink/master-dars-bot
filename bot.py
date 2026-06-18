@@ -42,7 +42,7 @@ COURSES_FILE = os.path.join(BASE_DIR, "courses.json")
 
 def load_users():
     users = {}
-    for doc in users_col.find():
+    for doc in users_col.find({"_id": {"$nin": list(banned_users)}}):
         uid = doc["_id"]
         users[uid] = {k: v for k, v in doc.items() if k != "_id"}
     return users
@@ -405,6 +405,9 @@ va boshqalar.
 )
 def my_result(message):
 
+    if str(message.from_user.id) in banned_users:
+        bot.send_message(message.chat.id, "⛔ Bot vaqtincha ish faoliyatida emas.")
+        return
     users = load_users()
 
     courses = load_courses()
@@ -458,6 +461,9 @@ def my_result(message):
 )
 def top_referral(message):
 
+    if str(message.from_user.id) in banned_users:
+        bot.send_message(message.chat.id, "⛔ Bot vaqtincha ish faoliyatida emas.")
+        return
     users = load_users()
 
     ranking = []
@@ -708,6 +714,9 @@ def admin_panel(message):
 )
 def statistika(message):
     users = load_users()
+    if str(message.from_user.id) in banned_users:
+        bot.send_message(message.chat.id, "⛔ Bot vaqtincha ish faoliyatida emas.")
+        return
     user_id = str(message.from_user.id)
     if message.from_user.id == ADMIN_ID:
         total_users = len(users)
