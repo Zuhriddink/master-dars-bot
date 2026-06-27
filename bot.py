@@ -47,6 +47,15 @@ def load_users():
         users[uid] = {k: v for k, v in doc.items() if k != "_id"}
     return users
 
+def get_user(user_id):
+    doc = users_col.find_one({"_id": user_id})
+    if doc:
+        return {k: v for k, v in doc.items() if k != "_id"}
+    return None
+
+def update_user(user_id, data):
+    users_col.update_one({"_id": user_id}, {"$set": data}, upsert=True)
+
 # ---------- SAVE USERS ----------
 
 def save_users(users):
@@ -291,15 +300,10 @@ def show_course(message):
         bot.send_message(message.chat.id, "⛔ Bot vaqtincha ish faoliyatida emas.")
         return
 
-    users = create_user(user_id)
-
     courses = load_courses()
-
     course_key = COURSE_BUTTONS[message.text]
-
-    users[user_id]["last_course"] = course_key
-
-    save_users(users)
+    create_user(user_id)
+    update_user(user_id, {"last_course": course_key})
 
     course = courses[course_key]
 
