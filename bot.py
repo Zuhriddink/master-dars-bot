@@ -822,6 +822,10 @@ threading.Thread(
     daemon=True
 ).start()
 print("Bot ishga tushdi...")
+try:
+    bot.send_message(ADMIN_ID, "✅ Bot ishga tushdi!")
+except:
+    pass
     
 @bot.message_handler(
     func=lambda m: m.chat.id in grant_user and m.chat.id not in broadcast_mode and m.chat.id not in reset_mode and m.chat.id not in delete_mode
