@@ -1,25 +1,18 @@
-import pymongo
-from pymongo import MongoClient
-
-import telebot
-from telebot import types
-import json
 import os
 import time
+import json
 import threading
+import telebot
+from telebot import types
+from pymongo import MongoClient
 
-TOKEN = "8961895801:AAHuSm3LrLVUlfWwCRHoPw8q3TxY4XWSAwg"
-ADMIN_ID = 1420365532
-search_user_mode = set()
-grant_mode = set()
-grant_user = {}
-delete_mode = set()
-banned_users = set()  # MongoDB dan yuklanadi
-unban_mode = set()
-reset_mode = set()
-broadcast_mode = set()
-
+# Railway Variables bo'limidan maxfiy ma'lumotlarni o'qish
+TOKEN = os.getenv("BOT_TOKEN")
 MONGO_URL = os.getenv("MONGO_URL")
+
+ADMIN_ID = 1420365532
+
+# MongoDB ga ulanish
 client = MongoClient(MONGO_URL)
 db = client["master_dars"]
 users_col = db["users"]
@@ -28,56 +21,34 @@ banned_col = db["banned"]
 bot = telebot.TeleBot(TOKEN)
 bot.remove_webhook()
 
-# Banned userlarni MongoDB dan yuklash
+# Banned userlarni xotiraga yuklash
+banned_users = set()
 for doc in banned_col.find():
-    banned_users.add(doc["_id"])
+    banned_users.add(str(doc["_id"]))
 
-# ---------- FILES ----------
+# Admin rejimlari saqlanadigan lug'atlar
+user_states = {}  # {chat_id: "state_name"}
+grant_user = {}
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-USERS_FILE = os.path.join(BASE_DIR, "users.json")
 COURSES_FILE = os.path.join(BASE_DIR, "courses.json")
 
-# ---------- LOAD USERS ----------
-
-def load_users():
-    users = {}
-    for doc in users_col.find({"_id": {"$nin": list(banned_users)}}):
-        uid = doc["_id"]
-        users[uid] = {k: v for k, v in doc.items() if k != "_id"}
-    return users
-
-def get_user(user_id):
-    doc = users_col.find_one({"_id": user_id})
-    if doc:
-        return {k: v for k, v in doc.items() if k != "_id"}
-    return None
-
-def update_user(user_id, data):
-    users_col.update_one({"_id": user_id}, {"$set": data}, upsert=True)
-
-# ---------- SAVE USERS ----------
-
-def save_users(users):
-    for uid, data in users.items():
-        users_col.update_one({"_id": uid}, {"$set": data}, upsert=True)
-
-# ---------- LOAD COURSES ----------
+# ---------- HELPER FUNCTIONS ----------
 
 def load_courses():
-
-    with open(COURSES_FILE, "r") as f:
-
+    with open(COURSES_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
 
-# ---------- CREATE USER ----------
+def get_user(user_id):
+    return users_col.find_one({"_id": str(user_id)})
 
-def create_user(user_id):
-    if not users_col.find_one({"_id": user_id}):
+def create_user_if_not_exists(user_id):
+    user_id = str(user_id)
+    user = get_user(user_id)
+    if not user:
         courses = load_courses()
         referrals = {course_key: 0 for course_key in courses}
-        users_col.insert_one({
+        new_data = {
             "_id": user_id,
             "referrals": referrals,
             "opened_courses": [],
@@ -86,196 +57,23 @@ def create_user(user_id):
             "inactive_reminder_sent": False,
             "offer_sent": False,
             "offer_sent_2": False
-        })
-    return load_users()
-    return users
-
-# ---------- MAIN MENU ----------
+        }
+        users_col.insert_one(new_data)
+        return new_data
+    return user
 
 def main_menu():
-
-    markup = types.ReplyKeyboardMarkup(
-        resize_keyboard=True
-    )
-
-    markup.row(
-        "💻 Dasturlash",
-        "💼 Office dasturlari"
-    )
-
-    markup.row(
-        "📒 1C Buxgalteriya",
-        "🌍 Chet tillari"
-    )
-
-    markup.row(
-        "📐 AutoCAD",
-        "🏠 3Ds Max"
-    )
-
-    markup.row(
-        "🎨 Photoshop",
-        "🖌 Corel Draw"
-    )
-
-    markup.row(
-        "🏗 Revit",
-        "🎬 Videomontaj"
-    )
-
-    markup.row(
-        "🤖 Telegram Bot yasash"
-    )
-
-    markup.row(
-        "📊 Statistika",
-        "🏆 TOP Referral"
-    )
-
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.row("💻 Dasturlash", "💼 Office dasturlari")
+    markup.row("📒 1C Buxgalteriya", "🌍 Chet tillari")
+    markup.row("📐 AutoCAD", "🏠 3Ds Max")
+    markup.row("🎨 Photoshop", "🖌 Corel Draw")
+    markup.row("🏗 Revit", "🎬 Videomontaj")
+    markup.row("🤖 Telegram Bot yasash")
+    markup.row("📊 Statistika", "🏆 TOP Referral")
     return markup
-# ---------- START ----------
-
-@bot.message_handler(commands=['start'])
-def start(message):
-
-    user_id = str(message.from_user.id)
-
-    if user_id in banned_users:
-        bot.send_message(message.chat.id, "⛔ Bot vaqtincha ish faoliyatida emas.")
-        return
-
-    is_new_user = user_id not in load_users()
-    users = create_user(user_id)
-
-    courses = load_courses()
-
-    args = message.text.split()
-
-    # REFERRAL
-    if len(args) > 1:
-
-        ref = args[1]
-
-        try:
-
-            referrer_id, course_key = ref.split("_", 1)
-
-            if (
-                is_new_user
-                and referrer_id != user_id
-                and referrer_id in users
-                and course_key in courses
-            ):
-
-                users[referrer_id]["referrals"][course_key] += 1
-
-                current = users[referrer_id]["referrals"][course_key]
-
-                required = courses[course_key]["required"]
-                remaining = required - current
-
-                if current < required:
-
-                    bot.send_message(
-                        int(referrer_id),
-                        f"""
-🎉 Tabriklaymiz!
-
-Yangi do‘stingiz botga qo‘shildi.
-
-{courses[course_key]['name']}
-
-✅ {current}/{required} referral
-
-👥 Maqsadgacha yana {remaining} ta do‘st qoldi.
-"""
-    )
-
-# 5 taga yetganda
-                if current == 5:
-
-                    bot.send_message(
-                        int(referrer_id),
-        f"""
-🚀 Zo‘r ketayapsiz!
-
-{courses[course_key]['name']}
-
-🔥 5/{required} referral
-
-Yarim yo‘lni bosib o‘tdingiz.
-"""
-    )
-
-# 9 taga yetganda
-                if current == required - 1:
-
-                    bot.send_message(
-                        int(referrer_id),
-        f"""
-🔥 Oxirgi qadam!
-
-{courses[course_key]['name']}
-
-⚡ {current}/{required} referral
-
-Kurs ochilishiga atigi 1 ta odam qoldi.
-"""
-    )
-
-                # KURS OCHILISHI
-                if (
-                    current >= required
-                    and course_key not in users[referrer_id]["opened_courses"]
-                ):
-
-                    users[referrer_id]["opened_courses"].append(course_key)
-
-                    bot.send_message(
-                        int(referrer_id),
-                        f"""
-🎉 Tabriklaymiz!
-
-🔓 Siz {courses[course_key]['name']} kursini muvaffaqiyatli ochdingiz.
-
-📚 Kurs kanali:
-
-{courses[course_key]['link']}
-
-━━━━━━━━━━
-
-🎁 Endi boshqa premium kurslarni ham ochishingiz mumkin.
-
-👥 Yana 10 ta do‘st taklif qiling va navbatdagi kursni bepul qo‘lga kiriting.
-
-🚀 Asosiy menyudan yangi kurs tanlang.
-"""
-                    )
-
-                save_users(users)
-
-        except Exception as e:
-
-            print(e)
-
-    bot.send_message(
-        message.chat.id,
-        """
-🔥 Premium kurslarni BEPUL o‘rganing!
-
-📚 800+ videodars
-🎓 11 ta premium kurs
-
-🔓 Kursni ochish uchun atigi 10 ta do‘stingizga botga start bosdiring.
-
-👇 Kurslardan birini tanlang:
-""",
-        reply_markup=main_menu()
-    )
-# ---------- COURSE BUTTONS ----------
 
 COURSE_BUTTONS = {
-
     "💻 Dasturlash": "programming",
     "💼 Office dasturlari": "office",
     "📒 1C Buxgalteriya": "buxgalteriya",
@@ -287,555 +85,285 @@ COURSE_BUTTONS = {
     "🏗 Revit": "revit",
     "🎬 Videomontaj": "video",
     "🤖 Telegram Bot yasash": "telegrambot"
-
 }
 
-@bot.message_handler(
-    func=lambda m: m.text in COURSE_BUTTONS
-)
-def show_course(message):
+# ---------- START HANDLER ----------
 
+@bot.message_handler(commands=['start'])
+def start(message):
     user_id = str(message.from_user.id)
 
     if user_id in banned_users:
         bot.send_message(message.chat.id, "⛔ Bot vaqtincha ish faoliyatida emas.")
         return
 
+    is_new_user = get_user(user_id) is None
+    user = create_user_if_not_exists(user_id)
     courses = load_courses()
-    course_key = COURSE_BUTTONS[message.text]
-    create_user(user_id)
-    update_user(user_id, {"last_course": course_key})
+    args = message.text.split()
 
-    course = courses[course_key]
+    # REFERRAL ISHLASH TIZIMI
+    if len(args) > 1 and is_new_user:
+        try:
+            referrer_id, course_key = args[1].split("_", 1)
+            referrer = get_user(referrer_id)
 
-    markup = types.ReplyKeyboardMarkup(
-        resize_keyboard=True
-    )
+            if referrer and referrer_id != user_id and course_key in courses:
+                users_col.update_one(
+                    {"_id": referrer_id},
+                    {"$inc": {f"referrals.{course_key}": 1}}
+                )
+                
+                updated_referrer = get_user(referrer_id)
+                current = updated_referrer["referrals"][course_key]
+                required = courses[course_key]["required"]
+                remaining = required - current
 
-    markup.row(
-        "🚀 Taklif qilish",
-        "📊 Mening natijam"
-    )
+                if current < required:
+                    bot.send_message(
+                        int(referrer_id),
+                        f"🎉 Tabriklaymiz!\n\nYangi do‘stingiz botga qo‘shildi.\n\n{courses[course_key]['name']}\n\n✅ {current}/{required} referral\n\n👥 Maqsadgacha yana {remaining} ta do‘st qoldi."
+                    )
+                elif current == 5:
+                    bot.send_message(
+                        int(referrer_id),
+                        f"🚀 Zo‘r ketayapsiz!\n\n{courses[course_key]['name']}\n\n🔥 5/{required} referral\n\nYarim yo‘lni bosib o‘tdingiz."
+                    )
+                elif current == required - 1:
+                    bot.send_message(
+                        int(referrer_id),
+                        f"🔥 Oxirgi qadam!\n\n{courses[course_key]['name']}\n\n⚡ {current}/{required} referral\n\nKurs ochilishiga atigi 1 ta odam qoldi."
+                    )
 
-    markup.row(
-        "🏆 TOP Referral",
-        "⬅️ Asosiy menyu"
-    )
-
-    text = f"""
-{course['name']}
-
-📚 Darslar soni: {course['lessons']}
-
-📖 Tarkibi:
-
-{course['info']}
-
-🔓 Kursni ochish uchun:
-
-👥 {course['required']} ta do‘st taklif qiling.
-"""
+                if current >= required and course_key not in updated_referrer["opened_courses"]:
+                    users_col.update_one(
+                        {"_id": referrer_id},
+                        {"$push": {"opened_courses": course_key}}
+                    )
+                    bot.send_message(
+                        int(referrer_id),
+                        f"🎉 Tabriklaymiz!\n\n🔓 Siz {courses[course_key]['name']} kursini muvaffaqiyatli ochdingiz.\n\n📚 Kurs kanali:\n{courses[course_key]['link']}\n\n━━━━━━━━━━\n🎁 Endi boshqa premium kurslarni ham ochishingiz mumkin."
+                    )
+        except Exception as e:
+            print("Referral error:", e)
 
     bot.send_message(
         message.chat.id,
-        text,
-        reply_markup=markup
-    )
-@bot.message_handler(
-    func=lambda m: m.text == "⬅️ Asosiy menyu"
-)
-def back_to_menu(message):
-
-    bot.send_message(
-        message.chat.id,
-        "🏠 Asosiy menyu",
+        "🔥 Premium kurslarni BEPUL o‘rganing!\n\n📚 800+ videodars\n🎓 11 ta premium kurs\n\n🔓 Kursni ochish uchun atigi 10 ta do‘stingizga botga start bosdiring.\n\n👇 Kurslardan birini tanlang:",
         reply_markup=main_menu()
     )
-@bot.message_handler(
-    func=lambda m: m.text == "🚀 Taklif qilish"
-)
-def share_link(message):
 
-    users = load_users()
+# ---------- COURSE HANDLERS ----------
 
-    courses = load_courses()
-
+@bot.message_handler(func=lambda m: m.text in COURSE_BUTTONS)
+def show_course(message):
     user_id = str(message.from_user.id)
-
-    course_key = users[user_id]["last_course"]
-
-    if not course_key:
-
-        bot.send_message(
-            message.chat.id,
-            "❗ Avval kurs tanlang."
-        )
-        return
-
-    course = courses[course_key]
-
-    link = (
-        f"https://t.me/master_darsbot"
-        f"?start={user_id}_{course_key}"
-    )
-
-    text = f"""
-🎁 Premium kurslarni bepul olayotgan edim.
-
-📚 800+ videodars
-🎓 11 ta premium kurs
-
-💻 Dasturlash
-📐 AutoCAD
-🎨 Photoshop
-🌍 Chet tillari
-🎬 Videomontaj
-va boshqalar.
-
-🔥 Men aynan {course['name']} kursini ochyapman.
-
-👇 Kirib START bosing:
-
-{link}
-
-⚡ Kurslar hozircha bepul.
-"""
-
-    bot.send_message(
-        message.chat.id,
-        text
-    )
-@bot.message_handler(
-    func=lambda m: m.text == "📊 Mening natijam"
-)
-def my_result(message):
-
-    if str(message.from_user.id) in banned_users:
+    if user_id in banned_users:
         bot.send_message(message.chat.id, "⛔ Bot vaqtincha ish faoliyatida emas.")
         return
-    users = load_users()
 
-    courses = load_courses()
+    course_key = COURSE_BUTTONS[message.text]
+    create_user_if_not_exists(user_id)
+    users_col.update_one({"_id": user_id}, {"$set": {"last_course": course_key}})
 
+    course = load_courses()[course_key]
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.row("🚀 Taklif qilish", "📊 Mening natijam")
+    markup.row("🏆 TOP Referral", "⬅️ Asosiy menyu")
+
+    text = f"{course['name']}\n\n📚 Darslar soni: {course['lessons']}\n\n📖 Tarkibi:\n{course['info']}\n\n🔓 Kursni ochish uchun:\n👥 {course['required']} ta do‘st taklif qiling."
+    bot.send_message(message.chat.id, text, reply_markup=markup)
+
+@bot.message_handler(func=lambda m: m.text == "⬅️ Asosiy menyu")
+def back_to_menu(message):
+    bot.send_message(message.chat.id, "🏠 Asosiy menyu", reply_markup=main_menu())
+
+@bot.message_handler(func=lambda m: m.text == "🚀 Taklif qilish")
+def share_link(message):
     user_id = str(message.from_user.id)
-
-    course_key = users[user_id]["last_course"]
+    user = get_user(user_id)
+    course_key = user.get("last_course") if user else None
 
     if not course_key:
-
-        bot.send_message(
-            message.chat.id,
-            "❗ Avval kurs tanlang."
-        )
+        bot.send_message(message.chat.id, "❗ Avval kurs tanlang.")
         return
 
-    course = courses[course_key]
+    course = load_courses()[course_key]
+    link = f"https://t.me/master_darsbot?start={user_id}_{course_key}"
+    text = f"🎁 Premium kurslarni bepul olayotgan edim.\n\n📚 800+ videodars\n🎓 11 ta premium kurs\n\n🔥 Men aynan {course['name']} kursini ochyapman.\n\n👇 Kirib START bosing:\n{link}\n\n⚡ Kurslar hozircha bepul."
+    bot.send_message(message.chat.id, text)
 
-    current = users[user_id]["referrals"][course_key]
+@bot.message_handler(func=lambda m: m.text == "📊 Mening natijam")
+def my_result(message):
+    user_id = str(message.from_user.id)
+    if user_id in banned_users:
+        return
 
+    user = get_user(user_id)
+    course_key = user.get("last_course") if user else None
+
+    if not course_key:
+        bot.send_message(message.chat.id, "❗ Avval kurs tanlang.")
+        return
+
+    course = load_courses()[course_key]
+    current = user.get("referrals", {}).get(course_key, 0)
     required = course["required"]
-
-    remaining = required - current
+    remaining = max(0, required - current)
 
     blocks = 10
-
-    filled = int((current / required) * blocks)
-
+    filled = int((current / required) * blocks) if required > 0 else 0
+    filled = min(filled, blocks)
     progress = "█" * filled + "░" * (blocks - filled)
 
-    text = f"""
-{course['name']}
+    text = f"{course['name']}\n\n📊 Sizning natijangiz\n\n{progress}\n\n✅ {current}/{required} referral\n\n👥 Yana {remaining} ta do‘st taklif qiling.\n\n🎁 Kurs avtomatik ochiladi."
+    bot.send_message(message.chat.id, text)
 
-📊 Sizning natijangiz
-
-{progress}
-
-✅ {current}/{required} referral
-
-👥 Yana {remaining} ta do‘st taklif qiling.
-
-🎁 Kurs avtomatik ochiladi.
-"""
-
-    bot.send_message(
-        message.chat.id,
-        text
-    )
-@bot.message_handler(
-    func=lambda m: m.text == "🏆 TOP Referral"
-)
+@bot.message_handler(func=lambda m: m.text == "🏆 TOP Referral")
 def top_referral(message):
-
-    if str(message.from_user.id) in banned_users:
-        bot.send_message(message.chat.id, "⛔ Bot vaqtincha ish faoliyatida emas.")
+    user_id = str(message.from_user.id)
+    if user_id in banned_users:
         return
-    users = load_users()
 
     ranking = []
+    for user in users_col.find():
+        uid = user["_id"]
+        total = sum(user.get("referrals", {}).values())
+        ranking.append((uid, total))
 
-    for user_id, data in users.items():
-
-        total = sum(
-            data["referrals"].values()
-        )
-
-        ranking.append(
-            (user_id, total)
-        )
-
-    ranking.sort(
-        key=lambda x: x[1],
-        reverse=True
-    )
-
+    ranking.sort(key=lambda x: x[1], reverse=True)
     text = "🏆 TOP Referralchilar\n\n"
-
-    medals = [
-        "🥇",
-        "🥈",
-        "🥉"
-    ]
+    medals = ["🥇", "🥈", "🥉"]
 
     for i, (uid, total) in enumerate(ranking[:10]):
-
         try:
-
-            user = bot.get_chat(int(uid))
-
-            name = user.first_name
-
-        except:
-
+            tg_user = bot.get_chat(int(uid))
+            name = tg_user.first_name
+        except Exception:
             name = "User"
 
         if i < 3:
-
-            text += (
-                f"{medals[i]} "
-                f"{name} — {total} ta\n"
-            )
-
+            text += f"{medals[i]} {name} — {total} ta\n"
         else:
-
-            text += (
-                f"{i+1}. "
-                f"{name} — {total} ta\n"
-            )
-
-    my_id = str(message.from_user.id)
+            text += f"{i+1}. {name} — {total} ta\n"
 
     my_place = 0
-
     my_total = 0
-
     for i, (uid, total) in enumerate(ranking):
-
-        if uid == my_id:
-
+        if uid == user_id:
             my_place = i + 1
-
             my_total = total
-
             break
 
-    text += f"""
+    text += f"\n━━━━━━━━━━\n\n👤 Siz:\n🏅 O‘rin: {my_place}\n👥 Referral: {my_total}"
+    bot.send_message(message.chat.id, text)
 
-━━━━━━━━━━
+@bot.message_handler(commands=['id'])
+def my_id(message):
+    bot.send_message(message.chat.id, str(message.from_user.id))
 
-👤 Siz:
-
-🏅 O‘rin: {my_place}
-
-👥 Referral: {my_total}
-"""
-
-    bot.send_message(
-        message.chat.id,
-        text
-    )
-@bot.message_handler(
-    func=lambda m: m.text == "👥 Userlar soni"
-)
-def admin_users_count(message):
-
-    if message.from_user.id != ADMIN_ID:
-        return
-
-    users = load_users()
-
-    bot.send_message(
-        message.chat.id,
-        f"👥 Jami userlar: {len(users)}"
-    )
-@bot.message_handler(
-    func=lambda m: m.chat.id in search_user_mode
-)
-def search_user(message):
-
-    if message.from_user.id != ADMIN_ID:
-        return
-
-    search_user_mode.discard(message.chat.id)
-
-    user_id = message.text.strip()
-
-    users = load_users()
-
-    if user_id not in users:
-        bot.send_message(
-            message.chat.id,
-            "❌ User topilmadi"
-        )
-        return
-
-    data = users[user_id]
-
-    total_referrals = sum(
-        data.get("referrals", {}).values()
-    )
-
-    opened = len(
-        data.get("opened_courses", [])
-    )
-
-    try:
-        tg_user = bot.get_chat(int(user_id))
-        name = tg_user.first_name
-    except:
-        name = "Noma'lum"
-
-    bot.send_message(
-        message.chat.id,
-        f"""
-👤 Ism: {name}
-
-🆔 ID: {user_id}
-
-🏆 Referral: {total_referrals}
-
-📚 Ochilgan kurslar: {opened}
-
-🕒 Oxirgi kurs: {data.get('last_course', '-')}
-"""
-    )
-def check_users():
-
-    users = load_users()
-
-    now = time.time()
-
-    for user_id, data in users.items():
-
-        try:
-
-            total = sum(
-                data["referrals"].values()
-            )
-
-            passed = now - data["time"]
-
-            # 24 soat
-            if user_id == str(ADMIN_ID):
-                continue
-            # 24 soat
-            # 24 soat - referral=0 bepul taklif
-            if (
-                total == 0
-                and passed >= 86400
-                and not data["inactive_reminder_sent"]
-            ):
-                bot.send_message(
-                    int(user_id),
-                    "🎓 Daromadli kasblarni o'rganishni boshlang.\n\nShunchaki 10 ta do'stingizga botga START bosishini so'rang.\n\n📚 Premium kurslar avtomatik ochiladi."
-                )
-                data["inactive_reminder_sent"] = True
-            # 48 soat - hammaga pulli taklif
-            if (
-                0 <= total <= 9
-                and passed >= 172800
-                and not data.get("offer_sent", False)
-            ):
-                bot.send_message(
-                    int(user_id),
-                    "💎 Kursni hali ocholmadingizmi?\n\nHech qisi yo'q.\n\n💎 Atigi 59 000 so'm evaziga hohlagan kursingizni hoziroq ochishingiz mumkin.\n\n👨\u200d💻 Admin:\n@MasterdarsAdmin"
-                )
-                data["offer_sent"] = True
-            # 120 soat - ikkinchi eslatma
-            if (
-                0 <= total <= 9
-                and passed >= 432000
-                and not data.get("offer_sent_2", False)
-            ):
-                bot.send_message(
-                    int(user_id),
-                    "🔥 Oxirgi eslatma!\n\nKurslarni bepul ochish imkoniyati hali bor.\n\n💎 Yoki atigi 59 000 so'm evaziga hoziroq oching.\n\n👨\u200d💻 Admin:\n@MasterdarsAdmin"
-                )
-                data["offer_sent_2"] = True
-
-        except:
-            pass
-    save_users(users)
-check_users()
-def reminder_loop():
-
-    while True:
-
-        try:
-            check_users()
-        except Exception as e:
-            print("Reminder error:", e)
-
-        time.sleep(3600)  # har 1 soatda
+# ---------- ADMIN PANEL & STATES ----------
 
 @bot.message_handler(commands=['admin'])
 def admin_panel(message):
-
     if message.from_user.id != ADMIN_ID:
         return
 
-    markup = types.ReplyKeyboardMarkup(
-        resize_keyboard=True
-    )
-
-    markup.row("📊 Statistika")
-    markup.row("👥 Userlar soni")
-
-    markup.row("📢 Broadcast")
-    markup.row("🎓 Kurs ochish")
-
-    markup.row("🔍 User qidirish")
-    markup.row("🏆 TOP Referral")
-
-    markup.row("🧹 Referral reset")
-    markup.row("🗑 Delete User")
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.row("📊 Statistika", "👥 Userlar soni")
+    markup.row("📢 Broadcast", "🎓 Kurs ochish")
+    markup.row("🔍 User qidirish", "🏆 TOP Referral")
+    markup.row("🧹 Referral reset", "🗑 Delete User")
     markup.row("✅ Unban User")
-    bot.send_message(
-        message.chat.id,
-        "🛠 Admin Panel",
-        reply_markup=markup
-    )
-@bot.message_handler(
-    func=lambda m: m.text == "📊 Statistika"
-)
+    bot.send_message(message.chat.id, "🛠 Admin Panel", reply_markup=markup)
+
+@bot.message_handler(func=lambda m: m.text == "📊 Statistika")
 def statistika(message):
-    users = load_users()
-    if str(message.from_user.id) in banned_users:
-        bot.send_message(message.chat.id, "⛔ Bot vaqtincha ish faoliyatida emas.")
-        return
     user_id = str(message.from_user.id)
+    if user_id in banned_users:
+        return
+
     if message.from_user.id == ADMIN_ID:
-        total_users = len(users)
-        total_referrals = sum(
-            sum(d.get("referrals", {}).values()) for d in users.values()
-        )
+        total_users = users_col.count_documents({})
+        total_referrals = 0
+        for user in users_col.find():
+            total_referrals += sum(user.get("referrals", {}).values())
         bot.send_message(
             message.chat.id,
             f"📊 Bot statistikasi\n\n👥 Userlar: {total_users}\n\n🏆 Jami referral: {total_referrals}"
         )
     else:
-        total = sum(users[user_id]["referrals"].values())
-        opened = len(users[user_id]["opened_courses"])
+        user = get_user(user_id)
+        total = sum(user.get("referrals", {}).values()) if user else 0
+        opened = len(user.get("opened_courses", [])) if user else 0
         faol = "🔥 Faol" if total > 0 else "😴 Hali boshlanmagan"
         bot.send_message(
             message.chat.id,
             f"📊 Sizning statistikangiz\n\n👥 Jami referral: {total}\n\n🎓 Ochilgan kurslar: {opened}\n\n🏆 Faollik holati:\n{faol}"
         )
-@bot.message_handler(commands=['id'])
-def my_id(message):
-    bot.send_message(
-        message.chat.id,
-        str(message.from_user.id)
-    )
-@bot.message_handler(
-    func=lambda m: m.text == "🔍 User qidirish"
-)
+
+@bot.message_handler(func=lambda m: m.text == "👥 Userlar soni" and m.from_user.id == ADMIN_ID)
+def admin_users_count(message):
+    total = users_col.count_documents({})
+    bot.send_message(message.chat.id, f"👥 Jami userlar: {total}")
+
+@bot.message_handler(func=lambda m: m.text == "🔍 User qidirish" and m.from_user.id == ADMIN_ID)
 def search_user_start(message):
+    user_states[message.chat.id] = "search_user"
+    bot.send_message(message.chat.id, "🔍 User ID yuboring")
 
-    if message.from_user.id != ADMIN_ID:
+@bot.message_handler(func=lambda m: user_states.get(m.chat.id) == "search_user" and m.from_user.id == ADMIN_ID)
+def search_user_finish(message):
+    user_states.pop(message.chat.id, None)
+    target_id = message.text.strip()
+    data = get_user(target_id)
+
+    if not data:
+        bot.send_message(message.chat.id, "❌ User topilmadi")
         return
 
-    search_user_mode.add(message.chat.id)
+    total_referrals = sum(data.get("referrals", {}).values())
+    opened = len(data.get("opened_courses", []))
+
+    try:
+        tg_user = bot.get_chat(int(target_id))
+        name = tg_user.first_name
+    except Exception:
+        name = "Noma'lum"
 
     bot.send_message(
         message.chat.id,
-        "🔍 User ID yuboring"
+        f"👤 Ism: {name}\n🆔 ID: {target_id}\n🏆 Referral: {total_referrals}\n📚 Ochilgan kurslar: {opened}\n🕒 Oxirgi kurs: {data.get('last_course', '-')}"
     )
-@bot.message_handler(
-    func=lambda m: m.text == "🎓 Kurs ochish"
-)
+
+@bot.message_handler(func=lambda m: m.text == "🎓 Kurs ochish" and m.from_user.id == ADMIN_ID)
 def grant_course_start(message):
+    user_states[message.chat.id] = "grant_user_id"
+    bot.send_message(message.chat.id, "🎓 Kurs beriladigan User ID ni yuboring")
 
-    if message.from_user.id != ADMIN_ID:
-        return
-
-    grant_mode.add(message.chat.id)
-
-    bot.send_message(
-        message.chat.id,
-        "🎓 Kurs beriladigan User ID ni yuboring"
-    )
-@bot.message_handler(
-    func=lambda m: m.chat.id in grant_mode
-)
+@bot.message_handler(func=lambda m: user_states.get(m.chat.id) == "grant_user_id" and m.from_user.id == ADMIN_ID)
 def grant_course_user(message):
-
-    if message.from_user.id != ADMIN_ID:
+    target_id = message.text.strip()
+    if not get_user(target_id):
+        bot.send_message(message.chat.id, "❌ User topilmadi")
+        user_states.pop(message.chat.id, None)
         return
 
-    user_id = message.text.strip()
+    grant_user[message.chat.id] = target_id
+    user_states[message.chat.id] = "grant_course_select"
 
-    users = load_users()
-
-    if user_id not in users:
-        bot.send_message(
-            message.chat.id,
-            "❌ User topilmadi"
-        )
-        return
-
-    grant_mode.discard(message.chat.id)
-
-    grant_user[message.chat.id] = user_id
-
-    markup = types.ReplyKeyboardMarkup(
-        resize_keyboard=True
-    )
-
-    markup.row("1️⃣ Dasturlash")
-    markup.row("2️⃣ Office")
-    markup.row("3️⃣ Buxgalteriya")
-    markup.row("4️⃣ Chet tillari")
-    markup.row("5️⃣ AutoCAD")
-    markup.row("6️⃣ 3Ds Max")
-    markup.row("7️⃣ Photoshop")
-    markup.row("8️⃣ Corel Draw")
-    markup.row("9️⃣ Revit")
-    markup.row("🔟 Videomontaj")
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.row("1️⃣ Dasturlash", "2️⃣ Office")
+    markup.row("3️⃣ Buxgalteriya", "4️⃣ Chet tillari")
+    markup.row("5️⃣ AutoCAD", "6️⃣ 3Ds Max")
+    markup.row("7️⃣ Photoshop", "8️⃣ Corel Draw")
+    markup.row("9️⃣ Revit", "🔟 Videomontaj")
     markup.row("1️⃣1️⃣ Telegram Bot")
+    bot.send_message(message.chat.id, "Kursni tanlang", reply_markup=markup)
 
-    bot.send_message(
-        message.chat.id,
-        "Kursni tanlang",
-        reply_markup=markup
-    )
-threading.Thread(
-    target=reminder_loop,
-    daemon=True
-).start()
-print("Bot ishga tushdi...")
-try:
-    bot.send_message(ADMIN_ID, "✅ Bot ishga tushdi!")
-except:
-    pass
-    
-@bot.message_handler(
-    func=lambda m: m.chat.id in grant_user and m.chat.id not in broadcast_mode and m.chat.id not in reset_mode and m.chat.id not in delete_mode
-)
+@bot.message_handler(func=lambda m: user_states.get(m.chat.id) == "grant_course_select" and m.from_user.id == ADMIN_ID)
 def grant_course_finish(message):
-
-    if message.from_user.id != ADMIN_ID:
-        return
-
+    user_states.pop(message.chat.id, None)
     courses_map = {
         "1️⃣ Dasturlash": "programming",
         "2️⃣ Office": "office",
@@ -851,18 +379,15 @@ def grant_course_finish(message):
     }
 
     if message.text not in courses_map:
+        bot.send_message(message.chat.id, "❌ Noto'g'ri kurs tanlandi.")
         return
 
-    target_user = str(grant_user[message.chat.id])
-
-    users = load_users()
+    target_user = grant_user.pop(message.chat.id, None)
+    if not target_user:
+        return
 
     course_key = courses_map[message.text]
-
-    if course_key not in users[target_user]["opened_courses"]:
-        users[target_user]["opened_courses"].append(course_key)
-
-    save_users(users)
+    users_col.update_one({"_id": target_user}, {"$addToSet": {"opened_courses": course_key}})
 
     courses = load_courses()
     course_name = courses[course_key]["name"]
@@ -872,98 +397,145 @@ def grant_course_finish(message):
             int(target_user),
             f"🎉 Tabriklaymiz!\n\n🔓 Sizga {course_name} kursi ochildi.\n\n📚 Kurs kanali:\n{courses[course_key]['link']}\n\n━━━━━━━━━━\n🎁 Endi boshqa premium kurslarni ham ochishingiz mumkin."
         )
-    except:
+    except Exception:
         pass
 
-    bot.send_message(
-        message.chat.id,
-        f"✅ {target_user} uchun {course_name} kursi ochildi."
-    )
+    bot.send_message(message.chat.id, f"✅ {target_user} uchun {course_name} kursi ochildi.", reply_markup=main_menu())
 
-    del grant_user[message.chat.id]
 @bot.message_handler(func=lambda m: m.text == "🧹 Referral reset" and m.from_user.id == ADMIN_ID)
 def referral_reset_start(message):
-    reset_mode.add(message.chat.id)
+    user_states[message.chat.id] = "reset_user"
     bot.send_message(message.chat.id, "🧹 Referali nolga tushuriladigan User ID ni yuboring")
 
-@bot.message_handler(func=lambda m: m.chat.id in reset_mode)
+@bot.message_handler(func=lambda m: user_states.get(m.chat.id) == "reset_user" and m.from_user.id == ADMIN_ID)
 def referral_reset_finish(message):
-    if message.from_user.id != ADMIN_ID:
-        return
-    reset_mode.discard(message.chat.id)
-    user_id = message.text.strip()
-    users = load_users()
-    if user_id not in users:
+    user_states.pop(message.chat.id, None)
+    target_id = message.text.strip()
+    if not get_user(target_id):
         bot.send_message(message.chat.id, "❌ User topilmadi")
         return
+
     courses = load_courses()
-    for course_key in courses:
-        users[user_id]["referrals"][course_key] = 0
-    save_users(users)
-    bot.send_message(message.chat.id, f"✅ {user_id} referallari nolga tushirildi.")
+    reset_dict = {f"referrals.{ck}": 0 for ck in courses}
+    users_col.update_one({"_id": target_id}, {"$set": reset_dict})
+    bot.send_message(message.chat.id, f"✅ {target_id} referallari nolga tushirildi.")
 
 @bot.message_handler(func=lambda m: m.text == "🗑 Delete User" and m.from_user.id == ADMIN_ID)
 def delete_user_start(message):
-    delete_mode.add(message.chat.id)
+    user_states[message.chat.id] = "delete_user"
     bot.send_message(message.chat.id, "🗑 O'chirilishi kerak bo'lgan User ID ni yuboring")
 
-@bot.message_handler(func=lambda m: m.chat.id in delete_mode)
+@bot.message_handler(func=lambda m: user_states.get(m.chat.id) == "delete_user" and m.from_user.id == ADMIN_ID)
 def delete_user_finish(message):
-    if message.from_user.id != ADMIN_ID:
-        return
-    delete_mode.discard(message.chat.id)
-    user_id = message.text.strip()
-    users = load_users()
-    if user_id not in users:
-        bot.send_message(message.chat.id, "❌ User topilmadi")
-    banned_users.add(user_id)
-    banned_col.insert_one({"_id": user_id})
-    del users[user_id]
-    save_users(users)
-    bot.send_message(message.chat.id, f"✅ {user_id} bloklandi va o'chirildi.")
-    try:
-        bot.send_message(int(user_id), "⛔ Bot vaqtincha ish faoliyatida emas.")
-    except:
-        pass
-    bot.send_message(message.chat.id, f"✅ {user_id} o'chirildi.")
-@bot.message_handler(func=lambda m: m.text == "📢 Broadcast" and m.from_user.id == ADMIN_ID)
-def broadcast_start(message):
-    broadcast_mode.add(message.chat.id)
-    bot.send_message(message.chat.id, "📢 Yubormoqchi boqlgan xabarni yozing")
+    user_states.pop(message.chat.id, None)
+    target_id = message.text.strip()
 
-@bot.message_handler(content_types=["text","photo","video","document","audio","voice","sticker","animation"], func=lambda m: m.chat.id in broadcast_mode)
-def broadcast_send(message):
-    if message.from_user.id != ADMIN_ID:
+    if not get_user(target_id):
+        bot.send_message(message.chat.id, "❌ User topilmadi")
         return
-    broadcast_mode.discard(message.chat.id)
-    users = load_users()
-    success = 0
-    fail = 0
-    for user_id in users:
-        try:
-            bot.copy_message(int(user_id), message.chat.id, message.message_id)
-            success += 1
-        except:
-            fail += 1
-    bot.send_message(message.chat.id, f"✅ Yuborildi: {success}\n❌ Xato: {fail}")
+
+    banned_users.add(target_id)
+    banned_col.update_one({"_id": target_id}, {"$set": {"_id": target_id}}, upsert=True)
+    users_col.delete_one({"_id": target_id})
+
+    bot.send_message(message.chat.id, f"✅ {target_id} bloklandi va bazadan o'chirildi.")
+    try:
+        bot.send_message(int(target_id), "⛔ Bot vaqtincha ish faoliyatida emas.")
+    except Exception:
+        pass
+
 @bot.message_handler(func=lambda m: m.text == "✅ Unban User" and m.from_user.id == ADMIN_ID)
 def unban_start(message):
-    unban_mode.add(message.chat.id)
+    user_states[message.chat.id] = "unban_user"
     bot.send_message(message.chat.id, "✅ Unban qilinadigan User ID ni yuboring")
 
-@bot.message_handler(func=lambda m: m.chat.id in unban_mode)
+@bot.message_handler(func=lambda m: user_states.get(m.chat.id) == "unban_user" and m.from_user.id == ADMIN_ID)
 def unban_finish(message):
-    if message.from_user.id != ADMIN_ID:
-        return
-    unban_mode.discard(message.chat.id)
-    user_id = message.text.strip()
-    if user_id in banned_users:
-        banned_users.discard(user_id)
-        banned_col.delete_one({"_id": user_id})
-        bot.send_message(message.chat.id, f"✅ {user_id} unban qilindi.")
+    user_states.pop(message.chat.id, None)
+    target_id = message.text.strip()
+
+    if target_id in banned_users:
+        banned_users.discard(target_id)
+        banned_col.delete_one({"_id": target_id})
+        bot.send_message(message.chat.id, f"✅ {target_id} unban qilindi.")
     else:
         bot.send_message(message.chat.id, "❌ Bu user banlarda topilmadi.")
-bot.infinity_polling(
-    timeout=10,
-    long_polling_timeout=5
-)
+
+@bot.message_handler(func=lambda m: m.text == "📢 Broadcast" and m.from_user.id == ADMIN_ID)
+def broadcast_start(message):
+    user_states[message.chat.id] = "broadcast"
+    bot.send_message(message.chat.id, "📢 Yubormoqchi bo'lgan xabarni yozing")
+
+@bot.message_handler(content_types=["text","photo","video","document","audio","voice","sticker","animation"], func=lambda m: user_states.get(m.chat.id) == "broadcast" and m.from_user.id == ADMIN_ID)
+def broadcast_send(message):
+    user_states.pop(message.chat.id, None)
+    success = 0
+    fail = 0
+
+    for user in users_col.find():
+        uid = user["_id"]
+        try:
+            bot.copy_message(int(uid), message.chat.id, message.message_id)
+            success += 1
+        except Exception:
+            fail += 1
+
+    bot.send_message(message.chat.id, f"✅ Yuborildi: {success}\n❌ Xato: {fail}")
+
+# ---------- BACKGROUND REMINDER THREAD ----------
+
+def check_users():
+    now = time.time()
+    for user in users_col.find():
+        user_id = user["_id"]
+        if user_id == str(ADMIN_ID) or user_id in banned_users:
+            continue
+
+        try:
+            total = sum(user.get("referrals", {}).values())
+            passed = now - user.get("time", now)
+
+            # 24 soat - taklif
+            if total == 0 and passed >= 86400 and not user.get("inactive_reminder_sent"):
+                bot.send_message(
+                    int(user_id),
+                    "🎓 Daromadli kasblarni o'rganishni boshlang.\n\nShunchaki 10 ta do'stingizga botga START bosishini so'rang.\n\n📚 Premium kurslar avtomatik ochiladi."
+                )
+                users_col.update_one({"_id": user_id}, {"$set": {"inactive_reminder_sent": True}})
+
+            # 48 soat - pulli taklif
+            if 0 <= total <= 9 and passed >= 172800 and not user.get("offer_sent"):
+                bot.send_message(
+                    int(user_id),
+                    "💎 Kursni hali ocholmadingizmi?\n\nHech qisi yo'q.\n\n💎 Atigi 59 000 so'm evaziga hohlagan kursingizni hoziroq ochishingiz mumkin.\n\n👨‍💻 Admin:\n@MasterdarsAdmin"
+                )
+                users_col.update_one({"_id": user_id}, {"$set": {"offer_sent": True}})
+
+            # 120 soat - 2-eslatma
+            if 0 <= total <= 9 and passed >= 432000 and not user.get("offer_sent_2"):
+                bot.send_message(
+                    int(user_id),
+                    "🔥 Oxirgi eslatma!\n\nKurslarni bepul ochish imkoniyati hali bor.\n\n💎 Yoki atigi 59 000 so'm evaziga hoziroq oching.\n\n👨‍💻 Admin:\n@MasterdarsAdmin"
+                )
+                users_col.update_one({"_id": user_id}, {"$set": {"offer_sent_2": True}})
+
+        except Exception as e:
+            pass
+
+def reminder_loop():
+    while True:
+        try:
+            check_users()
+        except Exception as e:
+            print("Reminder error:", e)
+        time.sleep(3600)  # Har 1 soatda ishlaydi
+
+threading.Thread(target=reminder_loop, daemon=True).start()
+
+print("Bot ishga tushdi...")
+try:
+    bot.send_message(ADMIN_ID, "✅ Bot ishga tushdi!")
+except Exception:
+    pass
+
+bot.infinity_polling(timeout=10, long_polling_timeout=5)
