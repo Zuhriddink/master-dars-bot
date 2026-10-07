@@ -6,13 +6,13 @@ import telebot
 from telebot import types
 from pymongo import MongoClient
 
-# Railway Variables bo'limidan maxfiy ma'lumotlarni o'qish
+# Railway Variables
 TOKEN = os.getenv("BOT_TOKEN")
 MONGO_URL = os.getenv("MONGO_URL")
 
 ADMIN_ID = 1420365532
 
-# MongoDB ga ulanish
+# Database connection
 client = MongoClient(MONGO_URL)
 db = client["master_dars"]
 users_col = db["users"]
@@ -21,13 +21,12 @@ banned_col = db["banned"]
 bot = telebot.TeleBot(TOKEN)
 bot.remove_webhook()
 
-# Banned userlarni xotiraga yuklash
+# Banned users
 banned_users = set()
 for doc in banned_col.find():
     banned_users.add(str(doc["_id"]))
 
-# Admin rejimlari saqlanadigan lug'atlar
-user_states = {}  # {chat_id: "state_name"}
+user_states = {}
 grant_user = {}
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -261,7 +260,7 @@ def top_referral(message):
 def my_id(message):
     bot.send_message(message.chat.id, str(message.from_user.id))
 
-# ---------- ADMIN PANEL & STATES ----------
+# ---------- ADMIN PANEL ----------
 
 @bot.message_handler(commands=['admin'])
 def admin_panel(message):
@@ -497,8 +496,8 @@ def quiz_broadcast(message):
     try:
         quiz_data = json.loads(message.text.strip())
         
-        # Bazaga joriy test sifatida saqlash
-        db["quiz"].delete_many({}) # eski testni o'chirish
+        # Save current quiz to DB
+        db["quiz"].delete_many({}) 
         db["quiz"].insert_one(quiz_data)
 
         markup = types.InlineKeyboardMarkup()
@@ -509,9 +508,9 @@ def quiz_broadcast(message):
             try:
                 bot.send_message(
                     int(user["_id"]),
-                    f"🧠 **Bugungi Bilim Sinovi (Mini-Test)!**\n\n📌 **Mavzu:** {quiz_data.get('title', 'Aralash Test')}\n❓ **Savollar soni:** {len(quiz_data['questions'])} ta (Juda oson!)\n\n👇 Bilimingizni sinash va qaysi soha sizga mosligini bilish uchun bosing:",
+                    f"🧠 <b>Bugungi Bilim Sinovi (Mini-Test)!</b>\n\n📌 <b>Mavzu:</b> {quiz_data.get('title', 'Aralash Test')}\n❓ <b>Savollar soni:</b> {len(quiz_data['questions'])} ta (Juda oson!)\n\n👇 Bilimingizni sinash va qaysi soha sizga mosligini bilish uchun bosing:",
                     reply_markup=markup,
-                    parse_mode="Markdown"
+                    parse_mode="HTML"
                 )
                 success += 1
             except Exception:
@@ -523,49 +522,57 @@ def quiz_broadcast(message):
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("start_quiz_") or call.data.startswith("ans_"))
 def handle_quiz_step(call):
-    quiz = db["quiz"].find_one()
-    if not quiz:
-        bot.answer_callback_query(call.id, "❌ Test topilmadi yoki muddati o'tgan.")
-        return
+    try:
+        bot.answer_callback_query(call.id)
 
-    questions = quiz["questions"]
-    parts = call.data.split("_")
-    
-    if parts[0] == "start_quiz":
-        q_idx = 0
-        score = 0
-    else:
-        q_idx = int(parts[1])
-        score = int(parts[2])
-        chosen = int(parts[3])
-        
-        if chosen == questions[q_idx]["correct"]:
-            score += 1
-        q_idx += 1
+        quiz = db["quiz"].find_one()
+        if not quiz:
+            bot.send_message(call.message.chat.id, "❌ Test topilmadi yoki yangi test yuborilgan.")
+            return
 
-    # Test yakunlanganda
-    if q_idx >= len(questions):
-        text = f"🎉 **Ajoyib natija!**\n\n📊 Siz {len(questions)} ta savoldan **{score} ta**siga to'g'ri javob berdingiz!\n\n💡 *O'zingiz qiziqqan yo'nalishni chuqurroq o'rganish va mutaxassis bo'lish uchun asosiy menyudan premium kursni tanlang va BEPUL oching!*"
+        questions = quiz["questions"]
+        parts = call.data.split("_")
         
+        if parts[0] == "start_quiz":
+            q_idx = 0
+            score = 0
+        else:
+            q_idx = int(parts[1])
+            score = int(parts[2])
+            chosen = int(parts[3])
+            
+            if chosen == questions[q_idx]["correct"]:
+                score += 1
+            q_idx += 1
+
+        # Quiz Finished
+        if q_idx >= len(questions):
+            text = f"🎉 <b>Ajoyib natija!</b>\n\n📊 Siz {len(questions)} ta savoldan <b>{score} ta</b>siga to'g'ri javob berdingiz!\n\n💡 <i>O'zingiz qiziqqan yo'nalishni chuqurroq o'rganish va mutaxassis bo'lish uchun asosiy menyudan premium kursni tanlang va BEPUL oching!</i>"
+            
+            markup = types.InlineKeyboardMarkup()
+            markup.add(types.InlineKeyboardButton("🏠 Asosiy Menyuga o'tish", callback_data="back_to_main"))
+            
+            bot.edit_message_text(text, call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode="HTML")
+            return
+
+        # Next question
+        q = questions[q_idx]
         markup = types.InlineKeyboardMarkup()
-        markup.add(types.InlineKeyboardButton("🏠 Asosiy Menyuga o'tish", callback_data="back_to_main"))
-        
-        bot.edit_message_text(text, call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode="Markdown")
-        return
+        for opt_idx, option in enumerate(q["options"]):
+            markup.add(types.InlineKeyboardButton(option, callback_data=f"ans_{q_idx}_{score}_{opt_idx}"))
 
-    # Navbatdagi savolni chiqarish
-    q = questions[q_idx]
-    markup = types.InlineKeyboardMarkup()
-    for opt_idx, option in enumerate(q["options"]):
-        markup.add(types.InlineKeyboardButton(option, callback_data=f"ans_{q_idx}_{score}_{opt_idx}"))
+        cat = q.get('category', 'Umumiy')
+        question_text = q['q']
 
-    bot.edit_message_text(
-        f"❓ **Savol {q_idx + 1}/{len(questions)}** ({q.get('category', 'Umumiy')})\n\n{q['q']}",
-        call.message.chat.id,
-        call.message.message_id,
-        reply_markup=markup,
-        parse_mode="Markdown"
-    )
+        bot.edit_message_text(
+            f"❓ <b>Savol {q_idx + 1}/{len(questions)}</b> ({cat})\n\n{question_text}",
+            call.message.chat.id,
+            call.message.message_id,
+            reply_markup=markup,
+            parse_mode="HTML"
+        )
+    except Exception as e:
+        print(f"Quiz Error: {e}")
 
 @bot.callback_query_handler(func=lambda call: call.data == "back_to_main")
 def back_to_main_callback(call):
@@ -584,7 +591,7 @@ def check_users():
             total = sum(user.get("referrals", {}).values())
             passed = now - user.get("time", now)
 
-            # 24 soat - taklif
+            # 24 hours
             if total == 0 and passed >= 86400 and not user.get("inactive_reminder_sent"):
                 bot.send_message(
                     int(user_id),
@@ -592,7 +599,7 @@ def check_users():
                 )
                 users_col.update_one({"_id": user_id}, {"$set": {"inactive_reminder_sent": True}})
 
-            # 48 soat - pulli taklif
+            # 48 hours
             if 0 <= total <= 9 and passed >= 172800 and not user.get("offer_sent"):
                 bot.send_message(
                     int(user_id),
@@ -600,7 +607,7 @@ def check_users():
                 )
                 users_col.update_one({"_id": user_id}, {"$set": {"offer_sent": True}})
 
-            # 120 soat - 2-eslatma
+            # 120 hours
             if 0 <= total <= 9 and passed >= 432000 and not user.get("offer_sent_2"):
                 bot.send_message(
                     int(user_id),
