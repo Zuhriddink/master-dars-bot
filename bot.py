@@ -53,6 +53,9 @@ def create_user_if_not_exists(user_id):
             "opened_courses": [],
             "last_course": "",
             "time": time.time(),
+            "quiz_score": 0,           # Test ballari
+            "solved_quizzes": [],      # Yechilgan testlar ID ro'yxati
+            "reward_50_notified": False, # 50 ball xabari yuborilganlik bayrog'i
             "inactive_reminder_sent": False,
             "offer_sent": False,
             "offer_sent_2": False
@@ -69,7 +72,8 @@ def main_menu():
     markup.row("🎨 Photoshop", "🖌 Corel Draw")
     markup.row("🏗 Revit", "🎬 Videomontaj")
     markup.row("🤖 Telegram Bot yasash")
-    markup.row("📊 Statistika", "🏆 TOP Referral")
+    markup.row("🧠 Mini-Test (Natijam)", "📊 Statistika")
+    markup.row("🏆 TOP Referral")
     return markup
 
 COURSE_BUTTONS = {
@@ -217,6 +221,41 @@ def my_result(message):
     text = f"{course['name']}\n\n📊 Sizning natijangiz\n\n{progress}\n\n✅ {current}/{required} referral\n\n👥 Yana {remaining} ta do‘st taklif qiling.\n\n🎁 Kurs avtomatik ochiladi."
     bot.send_message(message.chat.id, text)
 
+# ---------- MINI-TEST STATS BUTTON ----------
+
+@bot.message_handler(func=lambda m: m.text == "🧠 Mini-Test (Natijam)")
+def show_quiz_stats(message):
+    user_id = str(message.from_user.id)
+    if user_id in banned_users:
+        return
+
+    user = create_user_if_not_exists(user_id)
+    score = user.get("quiz_score", 0)
+    
+    # Maqsad ma'lumotlari
+    if score < 50:
+        target = 50
+        remaining = target - score
+        goal_text = f"🎯 Bepul kurs olish uchun yana <b>{remaining} ball</b> to'plashingiz kerak!"
+    else:
+        target = 200
+        remaining = max(0, target - score)
+        goal_text = f"🎯 Keyingi 2-bepul kurs uchun yana <b>{remaining} ball</b> to'plashingiz kerak!"
+
+    blocks = 10
+    filled = int((score / target) * blocks) if target > 0 else 0
+    filled = min(filled, blocks)
+    progress = "█" * filled + "░" * (blocks - filled)
+
+    text = (
+        f"🧠 <b>Sizning Test Natijangiz</b>\n\n"
+        f"📊 Jamlangan ball: <b>{score} / {target}</b>\n"
+        f" Progress: [{progress}]\n\n"
+        f"{goal_text}\n\n"
+        f"⏳ <i>Eslatib o'tamiz: Har bir mini-test yuborilgandan so'ng faqat 12 soat davomida faol bo'ladi. Keyingi testlarni o'tkazib yubormang!</i>"
+    )
+    bot.send_message(message.chat.id, text, parse_mode="HTML")
+
 @bot.message_handler(func=lambda m: m.text == "🏆 TOP Referral")
 def top_referral(message):
     user_id = str(message.from_user.id)
@@ -322,6 +361,7 @@ def search_user_finish(message):
 
     total_referrals = sum(data.get("referrals", {}).values())
     opened = len(data.get("opened_courses", []))
+    quiz_score = data.get("quiz_score", 0)
 
     try:
         tg_user = bot.get_chat(int(target_id))
@@ -331,7 +371,7 @@ def search_user_finish(message):
 
     bot.send_message(
         message.chat.id,
-        f"👤 Ism: {name}\n🆔 ID: {target_id}\n🏆 Referral: {total_referrals}\n📚 Ochilgan kurslar: {opened}\n🕒 Oxirgi kurs: {data.get('last_course', '-')}"
+        f"👤 Ism: {name}\n🆔 ID: {target_id}\n🏆 Referral: {total_referrals}\n🧠 Test Ballari: {quiz_score}\n📚 Ochilgan kurslar: {opened}\n🕒 Oxirgi kurs: {data.get('last_course', '-')}"
     )
 
 @bot.message_handler(func=lambda m: m.text == "🎓 Kurs ochish" and m.from_user.id == ADMIN_ID)
@@ -496,19 +536,25 @@ def quiz_broadcast(message):
     try:
         quiz_data = json.loads(message.text.strip())
         
-        # Save current quiz to DB
+        # Test yaratilgan vaqtini belgilash
+        current_time = time.time()
+        quiz_id = str(int(current_time))
+        quiz_data["quiz_id"] = quiz_id
+        quiz_data["created_at"] = current_time
+
+        # Bazaga joriy test sifatida saqlash
         db["quiz"].delete_many({}) 
         db["quiz"].insert_one(quiz_data)
 
         markup = types.InlineKeyboardMarkup()
-        markup.add(types.InlineKeyboardButton("▶️ Testni boshlash", callback_data="start_quiz_0_0"))
+        markup.add(types.InlineKeyboardButton("▶️ Testni boshlash", callback_data=f"start_quiz_{quiz_id}_0_0"))
 
         success = 0
         for user in users_col.find():
             try:
                 bot.send_message(
                     int(user["_id"]),
-                    f"🧠 <b>Bugungi Bilim Sinovi (Mini-Test)!</b>\n\n📌 <b>Mavzu:</b> {quiz_data.get('title', 'Aralash Test')}\n❓ <b>Savollar soni:</b> {len(quiz_data['questions'])} ta (Juda oson!)\n\n👇 Bilimingizni sinash va qaysi soha sizga mosligini bilish uchun bosing:",
+                    f"🧠 <b>Bugungi Bilim Sinovi (Mini-Test)!</b>\n\n📌 <b>Mavzu:</b> {quiz_data.get('title', 'Aralash Test')}\n❓ <b>Savollar soni:</b> {len(quiz_data['questions'])} ta (Juda oson!)\n🎁 <b>Har bir to'g'ri javob: +1 ball</b>\n\n⏳ <i>Diqqat: Test yechish uchun atigi 12 soat vaqtingiz bor!</i>\n\n👇 Bilimingizni sinash va ball to'plash uchun bosing:",
                     reply_markup=markup,
                     parse_mode="HTML"
                 )
@@ -525,17 +571,34 @@ def handle_quiz_step(call):
     try:
         bot.answer_callback_query(call.id)
 
+        user_id = str(call.from_user.id)
+        user_data = create_user_if_not_exists(user_id)
+
         quiz = db["quiz"].find_one()
         if not quiz:
             bot.send_message(call.message.chat.id, "❌ Test topilmadi yoki yangi test yuborilgan.")
+            return
+
+        # 12 SOATLIK MUDDATNI TEKSHIRISH (12 soat = 43200 sek)
+        created_at = quiz.get("created_at", 0)
+        if time.time() - created_at > 43200:
+            bot.send_message(call.message.chat.id, "⏰ <b>Afsuski, ushbu testning 12 soatlik vaqti tugagan!</b>\n\nO'tkazib yubormaslik uchun keyingi testlarni tezroq yechishga harakat qiling.", parse_mode="HTML")
+            return
+
+        quiz_id = quiz.get("quiz_id", "default")
+
+        # BIR MARTA YECHISH CHEKLOVI
+        solved_list = user_data.get("solved_quizzes", [])
+        if quiz_id in solved_list:
+            bot.send_message(call.message.chat.id, "⚠️ <b>Siz ushbu testni topshirib bo'lgansiz!</b>\n\nYangi test yuborilishini kuting. Jamlangan ballaringizni <b>🧠 Mini-Test (Natijam)</b> bo'limida ko'rishingiz mumkin.", parse_mode="HTML")
             return
 
         questions = quiz["questions"]
         parts = call.data.split("_")
         
         if call.data.startswith("start_quiz_"):
-            q_idx = int(parts[2])
-            score = int(parts[3])
+            q_idx = int(parts[3])
+            score = int(parts[4])
         else:
             q_idx = int(parts[1])
             score = int(parts[2])
@@ -545,17 +608,68 @@ def handle_quiz_step(call):
                 score += 1
             q_idx += 1
 
-        # Quiz Finished
+        # Test yakunlanganda
         if q_idx >= len(questions):
-            text = f"🎉 <b>Ajoyib natija!</b>\n\n📊 Siz {len(questions)} ta savoldan <b>{score} ta</b>siga to'g'ri javob berdingiz!\n\n💡 <i>O'zingiz qiziqqan yo'nalishni chuqurroq o'rganish va mutaxassis bo'lish uchun asosiy menyudan premium kursni tanlang va BEPUL oching!</i>"
+            # Ballni oshirish hamda yechilganlar ro'yxatiga qo'shish
+            users_col.update_one(
+                {"_id": user_id},
+                {
+                    "$inc": {"quiz_score": score},
+                    "$push": {"solved_quizzes": quiz_id}
+                }
+            )
+
+            updated_user = get_user(user_id)
+            total_score = updated_user.get("quiz_score", 0)
+
+            # TEST TUGAGANDAGI BATAFSIL TUSHUNTIRISH
+            text = (
+                f"🎉 <b>Ajoyib natija!</b>\n\n"
+                f"📊 Siz bu testdan <b>{score} ball</b> to'pladingiz!\n"
+                f"🏆 Barcha testlardan to'plagan umumiy ballaringiz: <b>{total_score} ball</b>\n\n"
+                f"💡 <i>Ballaringiz sizning hisobingizga muvaffaqiyatli qo'shildi! Asosiy menyudagi <b>🧠 Mini-Test (Natijam)</b> tugmasini bosib o'z progress panelingizni va maqsadgacha qancha qolganini kuzatib borishingiz mumkin.</i>"
+            )
             
             markup = types.InlineKeyboardMarkup()
             markup.add(types.InlineKeyboardButton("🏠 Asosiy Menyuga o'tish", callback_data="back_to_main"))
             
             bot.edit_message_text(text, call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode="HTML")
+
+            # 50 BALLGA YETGANDA USERGA VA ADMINGA XABAR YUBORISH
+            if total_score >= 50 and not updated_user.get("reward_50_notified", False):
+                users_col.update_one({"_id": user_id}, {"$set": {"reward_50_notified": True}})
+
+                # 1. Userga xabar
+                user_msg = (
+                    f"🎉 <b>TABRIKLAYMIZ! Siz 50 ball to'pladingiz!</b>\n\n"
+                    f"⚡ Tez orada admin siz bilan shaxsan bog'lanadi va o'zingiz tanlagan 1 ta premium kursni BEPUL ochib beradi!\n\n"
+                    f"🎁 <b>YANA BIR IMKONIYAT:</b> Agarda testlarda faol bo'lib umumiy ballaringizni <b>200 ball</b>ga yetkazsangiz, sizga YANA BIR kurs xuddi shunday BEPUL ochib beriladi!\n\n"
+                    f"🚀 Testlarni o'tkazib yubormasdan ishtirok etishda davom eting!"
+                )
+                try:
+                    bot.send_message(int(user_id), user_msg, parse_mode="HTML")
+                except Exception:
+                    pass
+
+                # 2. Adminga xabar
+                try:
+                    tg_user = bot.get_chat(int(user_id))
+                    user_name = tg_user.first_name
+                except Exception:
+                    user_name = "User"
+
+                admin_msg = (
+                    f"🚨 <b>YANGI G'OLIB! (50 BALL TO'PLANDI)</b>\n\n"
+                    f"👤 <b>Ism:</b> {user_name}\n"
+                    f"🆔 <b>User ID:</b> <code>{user_id}</code>\n"
+                    f"🏆 <b>Jamlangan ball:</b> {total_score} ball\n\n"
+                    f"💬 <i>Foydalanuvchi bilan bog'laning, hol-ahvol so'rang, bepul kursini ochib berib, keyingi bosqich va pullik taklifingizni bildiring!</i>"
+                )
+                bot.send_message(ADMIN_ID, admin_msg, parse_mode="HTML")
+
             return
 
-        # Next question
+        # Navbatdagi savolni chiqarish
         q = questions[q_idx]
         markup = types.InlineKeyboardMarkup()
         for opt_idx, option in enumerate(q["options"]):
