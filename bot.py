@@ -26,6 +26,7 @@ users_col = db["users"]
 banned_col = db["banned"]
 
 bot = telebot.TeleBot(TOKEN)
+bot.remove_webhook()
 
 # Banned userlarni MongoDB dan yuklash
 for doc in banned_col.find():
