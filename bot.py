@@ -221,7 +221,7 @@ def my_result(message):
     text = f"{course['name']}\n\n📊 Sizning natijangiz\n\n{progress}\n\n✅ {current}/{required} referral\n\n👥 Yana {remaining} ta do‘st taklif qiling.\n\n🎁 Kurs avtomatik ochiladi."
     bot.send_message(message.chat.id, text)
 
-# ---------- MINI-TEST STATS BUTTON ----------
+# ---------- MINI-TEST STATS & LEADERBOARD BUTTON ----------
 
 @bot.message_handler(func=lambda m: m.text == "🧠 Mini-Test (Natijam)")
 def show_quiz_stats(message):
@@ -247,11 +247,46 @@ def show_quiz_stats(message):
     filled = min(filled, blocks)
     progress = "█" * filled + "░" * (blocks - filled)
 
+    # BARCHA USERLARNI BALL BO'YICHA SARALASH (REATING)
+    ranking = []
+    for u in users_col.find():
+        uid = u["_id"]
+        q_score = u.get("quiz_score", 0)
+        ranking.append((uid, q_score))
+
+    ranking.sort(key=lambda x: x[1], reverse=True)
+
+    my_place = 0
+    for i, (uid, q_score) in enumerate(ranking):
+        if uid == user_id:
+            my_place = i + 1
+            break
+
+    # TOP 10 TALIK MATNI
+    top_text = "🏆 <b>Mini-Test bo'yicha TOP 10 talik:</b>\n"
+    medals = ["🥇", "🥈", "🥉"]
+
+    for i, (uid, q_score) in enumerate(ranking[:10]):
+        try:
+            tg_user = bot.get_chat(int(uid))
+            name = tg_user.first_name
+        except Exception:
+            name = "User"
+
+        if i < 3:
+            top_text += f"{medals[i]} <b>{name}</b> — {q_score} ball\n"
+        else:
+            top_text += f"{i+1}. <b>{name}</b> — {q_score} ball\n"
+
     text = (
         f"🧠 <b>Sizning Test Natijangiz</b>\n\n"
         f"📊 Jamlangan ball: <b>{score} / {target}</b>\n"
-        f" Progress: [{progress}]\n\n"
+        f" Progress: [{progress}]\n"
+        f"🏅 Sizning o'ringingiz: <b>{my_place}-o'rin</b>\n\n"
         f"{goal_text}\n\n"
+        f"━━━━━━━━━━━━━━━━━━\n"
+        f"{top_text}"
+        f"━━━━━━━━━━━━━━━━━━\n"
         f"⏳ <i>Eslatib o'tamiz: Har bir mini-test yuborilgandan so'ng faqat 12 soat davomida faol bo'ladi. Keyingi testlarni o'tkazib yubormang!</i>"
     )
     bot.send_message(message.chat.id, text, parse_mode="HTML")
@@ -536,7 +571,6 @@ def quiz_broadcast(message):
     try:
         quiz_data = json.loads(message.text.strip())
         
-        # Test yaratilgan vaqtini belgilash
         current_time = time.time()
         quiz_id = str(int(current_time))
         quiz_data["quiz_id"] = quiz_id
@@ -579,7 +613,7 @@ def handle_quiz_step(call):
             bot.send_message(call.message.chat.id, "❌ Test topilmadi yoki yangi test yuborilgan.")
             return
 
-        # 12 SOATLIK MUDDATNI TEKSHIRISH (12 soat = 43200 sek)
+        # 12 SOATLIK MUDDATNI TEKSHIRISH
         created_at = quiz.get("created_at", 0)
         if time.time() - created_at > 43200:
             bot.send_message(call.message.chat.id, "⏰ <b>Afsuski, ushbu testning 12 soatlik vaqti tugagan!</b>\n\nO'tkazib yubormaslik uchun keyingi testlarni tezroq yechishga harakat qiling.", parse_mode="HTML")
@@ -610,7 +644,6 @@ def handle_quiz_step(call):
 
         # Test yakunlanganda
         if q_idx >= len(questions):
-            # Ballni oshirish hamda yechilganlar ro'yxatiga qo'shish
             users_col.update_one(
                 {"_id": user_id},
                 {
@@ -622,12 +655,11 @@ def handle_quiz_step(call):
             updated_user = get_user(user_id)
             total_score = updated_user.get("quiz_score", 0)
 
-            # TEST TUGAGANDAGI BATAFSIL TUSHUNTIRISH
             text = (
                 f"🎉 <b>Ajoyib natija!</b>\n\n"
                 f"📊 Siz bu testdan <b>{score} ball</b> to'pladingiz!\n"
                 f"🏆 Barcha testlardan to'plagan umumiy ballaringiz: <b>{total_score} ball</b>\n\n"
-                f"💡 <i>Ballaringiz sizning hisobingizga muvaffaqiyatli qo'shildi! Asosiy menyudagi <b>🧠 Mini-Test (Natijam)</b> tugmasini bosib o'z progress panelingizni va maqsadgacha qancha qolganini kuzatib borishingiz mumkin.</i>"
+                f"💡 <i>Ballaringiz sizning hisobingizga muvaffaqiyatli qo'shildi! Asosiy menyudagi <b>🧠 Mini-Test (Natijam)</b> tugmasini bosib o'z reytingingizni va maqsadgacha qancha qolganini kuzatib borishingiz mumkin.</i>"
             )
             
             markup = types.InlineKeyboardMarkup()
@@ -639,7 +671,6 @@ def handle_quiz_step(call):
             if total_score >= 50 and not updated_user.get("reward_50_notified", False):
                 users_col.update_one({"_id": user_id}, {"$set": {"reward_50_notified": True}})
 
-                # 1. Userga xabar
                 user_msg = (
                     f"🎉 <b>TABRIKLAYMIZ! Siz 50 ball to'pladingiz!</b>\n\n"
                     f"⚡ Tez orada admin siz bilan shaxsan bog'lanadi va o'zingiz tanlagan 1 ta premium kursni BEPUL ochib beradi!\n\n"
@@ -651,7 +682,6 @@ def handle_quiz_step(call):
                 except Exception:
                     pass
 
-                # 2. Adminga xabar
                 try:
                     tg_user = bot.get_chat(int(user_id))
                     user_name = tg_user.first_name
@@ -669,7 +699,7 @@ def handle_quiz_step(call):
 
             return
 
-        # Navbatdagi savolni chiqarish
+        # Navbatdagi savol
         q = questions[q_idx]
         markup = types.InlineKeyboardMarkup()
         for opt_idx, option in enumerate(q["options"]):
