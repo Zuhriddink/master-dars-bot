@@ -533,9 +533,9 @@ def handle_quiz_step(call):
         questions = quiz["questions"]
         parts = call.data.split("_")
         
-        if parts[0] == "start_quiz":
-            q_idx = 0
-            score = 0
+        if call.data.startswith("start_quiz_"):
+            q_idx = int(parts[2])
+            score = int(parts[3])
         else:
             q_idx = int(parts[1])
             score = int(parts[2])
