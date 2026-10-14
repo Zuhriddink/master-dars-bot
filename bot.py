@@ -56,9 +56,9 @@ def create_user_if_not_exists(user_id):
             "quiz_score": 0,           # Test ballari
             "solved_quizzes": [],      # Yechilgan testlar ID ro'yxati
             "reward_50_notified": False, # 50 ball xabari yuborilganlik bayrog'i
-            "inactive_reminder_sent": False, # 24 soatlik eslatma
-            "offer_sent": False,             # 48 soatlik taklif
-            "offer_sent_2": False            # 120 soatlik oxirgi taklif
+            "inactive_reminder_sent": False,
+            "offer_sent": False,
+            "offer_sent_2": False
         }
         users_col.insert_one(new_data)
         return new_data
@@ -722,7 +722,7 @@ def handle_quiz_step(call):
 def back_to_main_callback(call):
     bot.send_message(call.message.chat.id, "🏠 Asosiy menyu", reply_markup=main_menu())
 
-# ---------- BACKGROUND REMINDER THREAD (24, 48 VA 120 SOATLIK ESLAATMALAR) ----------
+# ---------- BACKGROUND REMINDER THREAD ----------
 
 def check_users():
     now = time.time()
@@ -735,44 +735,28 @@ def check_users():
             total = sum(user.get("referrals", {}).values())
             passed = now - user.get("time", now)
 
-            # 24 SOATLIK ESLATMA VA SMS SHABLONLAR TUSHUNTIRISHLARI
+            # 24 hours
             if total == 0 and passed >= 86400 and not user.get("inactive_reminder_sent"):
-                msg_24 = (
-                    "🏪 <b>Do'koningizda nasiyalar bor-u, lekin yig'ib olish qiyin bo'lyaptimi?</b>\n\n"
-                    "Bizning <b>Qarz Nazorat Botimiz</b> mijozlarga avtomatik SMS yuborishni o'z zimmasiga oladi!\n\n"
-                    "📩 <b>Mijozlarga boradigan SMS shablonlari qanday bo'ladi?</b>\n\n"
-                    "1️⃣ <b>Qarz olinganda:</b>\n"
-                    "<i>'Hurmatli Alisher! [Do'kon Nomi] do'konidan 150,000 so'mlik nasiya xaridingiz tasdiqlandi. To'lov muddati: 25-sana.'</i>\n\n"
-                    "2️⃣ <b>To'lov qilinganda:</b>\n"
-                    "<i>'Hurmatli Alisher! [Do'kon Nomi] do'koniga 100,000 so'm to'lov qildingiz. Qolgan qarzingiz: 50,000 so'm. Rahmat!'</i>\n\n"
-                    "3️⃣ <b>Muddati kelganda / o'tganda:</b>\n"
-                    "<i>'Hurmatli Alisher! [Do'kon Nomi] do'konidan qarzingiz to'lov muddati keldi. Iltimos, o'z vaqtida to'lov qiling.'</i>\n\n"
-                    "💡 <i>Ushbu tizim tufayli qarzlar o'z vaqtida va ortiqcha tortishuvlarsiz yig'iladi!</i>\n\n"
-                    "👉 Botdan hoziroq foydalanishni boshlash uchun o'zingizga kerakli kurs yoki bo'limni tanlang."
+                bot.send_message(
+                    int(user_id),
+                    "🎓 Daromadli kasblarni o'rganishni boshlang.\n\nShunchaki 10 ta do'stingizga botga START bosishini so'rang.\n\n📚 Premium kurslar avtomatik ochiladi."
                 )
-                bot.send_message(int(user_id), msg_24, parse_mode="HTML")
                 users_col.update_one({"_id": user_id}, {"$set": {"inactive_reminder_sent": True}})
 
-            # 48 SOATLIK MAXSUS TAKLIF
+            # 48 hours
             if 0 <= total <= 9 and passed >= 172800 and not user.get("offer_sent"):
-                msg_48 = (
-                    "💎 <b>Do'koningiz avtomatlashtirilishini kutyapsizmi?</b>\n\n"
-                    "Mijozlarga avto-SMS yuboruvchi <b>Qarz Nazorat (Mini-CRM)</b> tizimini shunchaki do'stlaringizga ulashib tekinga ochishingiz mumkin!\n\n"
-                    "⚡ Yoki kutib o'tirmasdan, atigi <b>59 000 so'm</b> evaziga to'liq kirish huquqini darhol xarid qilishingiz mumkin.\n\n"
-                    "👨‍💻 <b>Admin bilan bog'lanish:</b>\n@MasterdarsAdmin"
+                bot.send_message(
+                    int(user_id),
+                    "💎 Kursni hali ocholmadingizmi?\n\nHech qisi yo'q.\n\n💎 Atigi 59 000 so'm evaziga hohlagan kursingizni hoziroq ochishingiz mumkin.\n\n👨‍💻 Admin:\n@MasterdarsAdmin"
                 )
-                bot.send_message(int(user_id), msg_48, parse_mode="HTML")
                 users_col.update_one({"_id": user_id}, {"$set": {"offer_sent": True}})
 
-            # 120 SOATLIK OXIRGI ESLATMA
+            # 120 hours
             if 0 <= total <= 9 and passed >= 432000 and not user.get("offer_sent_2"):
-                msg_120 = (
-                    "🔥 <b>Oxirgi imkoniyat!</b>\n\n"
-                    "Nasiya va qarzlar nazoratini tartibga solish va mijozlarga avto-SMS tizimini yo'lga qo'yish uchun hali ham imkoniyatingiz bor.\n\n"
-                    "💎 Atigi <b>59 000 so'm</b> evaziga tizimni hoziroq ishga tushiring.\n\n"
-                    "👨‍💻 <b>Admin bilan bog'lanish:</b>\n@MasterdarsAdmin"
+                bot.send_message(
+                    int(user_id),
+                    "🔥 Oxirgi eslatma!\n\nKurslarni bepul ochish imkoniyati hali bor.\n\n💎 Yoki atigi 59 000 so'm evaziga hoziroq oching.\n\n👨‍💻 Admin:\n@MasterdarsAdmin"
                 )
-                bot.send_message(int(user_id), msg_120, parse_mode="HTML")
                 users_col.update_one({"_id": user_id}, {"$set": {"offer_sent_2": True}})
 
         except Exception:
